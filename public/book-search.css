@@ -1,0 +1,42 @@
+.book-search { margin-block: 0 18px; }
+.book-search label {
+  display: block;
+  margin-bottom: 6px;
+  color: var(--muted);
+  font: 550 13px/1.4 var(--sans);
+}
+.book-search input {
+  display: block;
+  width: min(100%, 430px);
+  min-height: 44px;
+  padding: 9px 13px;
+  border: 1px solid #d8d4c8;
+  border-radius: 8px;
+  background: var(--panel);
+  color: var(--ink);
+  font: 400 16px/1.4 var(--sans);
+}
+.book-search input::placeholder { color: var(--muted); }
+.book-search [data-book-filter-status] {
+  margin: 0;
+  color: var(--muted);
+  font: 13px/1.5 var(--sans);
+}
+.book-search [data-book-filter-status]:not(:empty) { margin-top: 8px; }
+.book-search + .book-toc > ul > .book-part:nth-child(1 of :not([hidden])) { margin-top: 0; }
+
+.book-contents[open]:has(> .book-search) {
+  display: flex;
+  flex-direction: column;
+  margin-block-start: max(24px, calc((100dvh - 720px) / 2));
+  overflow: hidden;
+}
+.book-contents > .book-search { margin: 0; padding: 14px clamp(16px, 4vw, 26px) 12px; }
+.book-contents .book-search input { width: 100%; }
+.book-contents > .book-search + .book-toc {
+  min-height: 0;
+  overflow-y: auto;
+  padding-top: 8px;
+  scroll-padding-block: 8px;
+  overscroll-behavior: contain;
+}

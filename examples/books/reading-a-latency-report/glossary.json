@@ -1,0 +1,62 @@
+{
+  "latency": [
+    "delay before a response",
+    "In this book, a latency measurement records the time the website takes to handle a request."
+  ],
+  "observation": [
+    "one recorded measurement",
+    "Each request contributes one measured response time to the sample."
+  ],
+  "observation window": [
+    "period covered by the measurements",
+    "The twenty requests were recorded during the same short stretch of time."
+  ],
+  "rank": [
+    "position in an ordered list",
+    "In the sample, the rank gives a response time’s position from fastest to slowest."
+  ],
+  "median": [
+    "middle value of an ordered sample",
+    "With twenty requests, the median is the midpoint between the 10th and 11th response times."
+  ],
+  "round up": [
+    "move to the next whole number if needed",
+    "The nearest-rank method uses a whole-number position, even when the calculation gives a fraction."
+  ],
+  "nearest-rank method": [
+    "a percentile rule based on sorted positions",
+    "Multiply the sample size by the desired fraction and round up to find the position in the sorted list."
+  ],
+  "percentile": [
+    "value at or below which a specified share of observations falls",
+    "The 95th percentile describes a cutoff near the slow end of the measurements."
+  ],
+  "tail": [
+    "part of a distribution containing extreme values",
+    "Here the tail refers to the relatively few requests that take much longer than most."
+  ],
+  "threshold": [
+    "chosen cutoff for deciding what to count",
+    "The report can count requests that took more than one second."
+  ],
+  "sample size": [
+    "number of observations in the sample",
+    "Here twenty requests means that each request accounts for five percent of the observations."
+  ],
+  "traffic mix": [
+    "proportions of different kinds of requests",
+    "Tuesday has more ticket-buying requests relative to browsing requests than Monday."
+  ],
+  "break down": [
+    "examine the individual parts",
+    "Separate figures for browsing and buying help explain why the overall number increased."
+  ],
+  "apparent": [
+    "seeming to be true",
+    "The overall number suggests the site became slower, while each activity takes the same time as before."
+  ],
+  "breakdown": [
+    "division into groups for analysis",
+    "A separate number for each tour might reveal which ticket purchases are affected by a delay."
+  ]
+}

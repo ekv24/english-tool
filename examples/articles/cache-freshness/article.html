@@ -1,0 +1,16 @@
+<p>A museum website shows how many tickets are left for each afternoon tour. Every time someone opens the page, the site could ask the booking system for the latest count. When many visitors are browsing, it is quicker to reuse an answer from a cache. The trade-off is that a correct answer can go stale while it sits there.</p>
+
+<h2 id="reuse-a-recent-answer">Reuse a recent answer</h2>
+<p>At noon, the website asks the booking system how many places remain on the two o’clock tour. The answer is twelve. The website saves that count and gives it a time to live of thirty seconds. A visitor who opens the page at 12:00:10 gets the saved answer. That is a cache hit: the website can answer without making another request to the booking system.</p>
+<p>At 12:00:15, a family books four tickets. The booking system now shows eight places, but the cached count still says twelve. When the entry expires at 12:00:30, the website needs a fresh count the next time someone loads the page. The thirty seconds are measured from the time the answer was saved. A visitor reading the page does not reset the clock.</p>
+
+<h2 id="the-cost-of-being-wrong">Consider the cost of being wrong</h2>
+<p>A slightly old count may be acceptable on a page where visitors compare tours. Showing twelve available places instead of eight matters less if they only want to know whether any places are left. The same discrepancy matters when a group of ten tries to buy tickets. The booking system must check availability when it accepts the booking, because another group may have already claimed the places.</p>
+<p>Some pages can tolerate a longer delay. It makes sense to cache a list of upcoming exhibitions for several minutes if the museum rarely changes it. A shorter lifetime keeps ticket counts closer to the current number, but more page loads then require a fresh request. The useful lifetime depends on how the answer will be used and how often it changes.</p>
+
+<h2 id="remove-an-outdated-entry">Remove an outdated entry after a change</h2>
+<p>The booking system can also tell the website to remove the cached count whenever a reservation changes. This is called cache invalidation. The next visitor causes a cache miss and gets a fresh count. The website can respond sooner to a change without checking for updates on every visit.</p>
+<p>This approach depends on the update notice reaching the website. Suppose the family books at 12:00:15 but the notice is lost. A thirty-second expiry still limits how long the website will reuse that particular saved answer. Invalidation handles updates as they happen, while expiry gives the website another chance to fetch the count if it misses a notice.</p>
+
+<h2 id="agree-on-the-cache-key">Agree on the cache key</h2>
+<p>The website uses a cache key to find the saved count. If the key contains only the time of day, “two o’clock” could refer to tours on Friday and Saturday. Deleting the entry more often would still leave both pages using the same key. Including both the date and the tour in the key gives each tour its own entry.</p>

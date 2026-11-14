@@ -1,0 +1,220 @@
+import { readerSyncStatus, registerVocabularyReview, scheduleSync, syncReaderState } from './sync.js';
+
+/** @typedef {import('../vocabulary-review.mjs').ReviewAction} ReviewAction */
+/** @typedef {ReturnType<ReturnType<typeof import('../vocabulary-review.mjs').createVocabularyReview>>} Snapshot */
+
+const pendingKey = 'vocabulary-review:pending';
+const snapshotKey = 'vocabulary-review:snapshot';
+/** @type {Snapshot | null} */
+let snapshot = readCache(snapshotKey, null);
+/** @type {ReviewAction | null} */
+let pending = readCache(pendingKey, null);
+let error = '';
+
+/** @template T @param {string} key @param {T} fallback @returns {T} */
+function readCache(key, fallback) {
+  try { return JSON.parse(localStorage.getItem(key) ?? 'null') ?? fallback; }
+  catch { return fallback; }
+}
+
+/** @param {Element} list */
+export function initReview(list) {
+  const home = /** @type {HTMLElement} */ (document.querySelector('[data-vocabulary-home]'));
+  const panel = /** @type {HTMLElement} */ (document.querySelector('.review-session'));
+  const launch = /** @type {HTMLElement} */ (document.querySelector('.review-launch'));
+  const start = /** @type {HTMLButtonElement} */ (launch.querySelector('[data-review-start]'));
+  const summary = /** @type {HTMLElement} */ (launch.querySelector('[data-review-summary]'));
+  const heading = /** @type {HTMLElement} */ (panel.querySelector('[data-review-heading]'));
+  const prompt = /** @type {HTMLElement} */ (panel.querySelector('[data-review-prompt]'));
+  const progress = /** @type {HTMLElement} */ (panel.querySelector('[data-review-progress]'));
+  const meter = /** @type {HTMLElement} */ (panel.querySelector('.review-meter span'));
+  const example = /** @type {HTMLElement} */ (panel.querySelector('[data-review-example]'));
+  const feedback = /** @type {HTMLElement} */ (panel.querySelector('[data-review-feedback]'));
+  const translation = /** @type {HTMLElement} */ (panel.querySelector('[data-review-translation]'));
+  const source = /** @type {HTMLAnchorElement} */ (panel.querySelector('[data-review-source]'));
+  const status = /** @type {HTMLElement} */ (panel.querySelector('[data-review-status]'));
+  const exit = /** @type {HTMLButtonElement} */ (panel.querySelector('[data-review-exit]'));
+  const hint = /** @type {HTMLButtonElement} */ (panel.querySelector('[data-review-hint]'));
+  const reveal = /** @type {HTMLButtonElement} */ (panel.querySelector('[data-review-reveal]'));
+  const again = /** @type {HTMLButtonElement} */ (panel.querySelector('[data-review-again]'));
+  const remembered = /** @type {HTMLButtonElement} */ (panel.querySelector('[data-review-remembered]'));
+  const more = /** @type {HTMLButtonElement} */ (panel.querySelector('[data-review-more]'));
+
+  let opened = false;
+  let shown = '';
+  let revealed = false;
+  let hinted = false;
+  let latestSession = '';
+
+  /** @param {ReviewAction} action */
+  function push(action) {
+    if (pending) return;
+    error = '';
+    try { localStorage.setItem(pendingKey, JSON.stringify(action)); }
+    catch {
+      error = 'Browser storage is unavailable. This change could not be saved.';
+      render();
+      return;
+    }
+    pending = action;
+    render();
+    void syncReaderState();
+    scheduleSync();
+  }
+
+  function current() {
+    const session = snapshot?.session;
+    if (!session) return null;
+    const answered = pending?.type === 'answer' && pending.id === session.id && pending.step === session.step;
+    return { ...session, step: session.step + Number(answered) };
+  }
+
+  function render() {
+    const wasOpen = !panel.hidden;
+    const session = current();
+    const card = session?.queue[session.step];
+    const available = snapshot?.available ?? 0;
+    const synced = readerSyncStatus === 'synced';
+    const hasExpressions = Boolean(list.querySelector('li'));
+    launch.hidden = !hasExpressions && !card && !pending;
+    home.hidden = opened;
+    panel.hidden = !opened;
+    start.hidden = !card && !available && !pending;
+    start.textContent = card ? 'Continue review' : session ? 'Review more' : 'Start review';
+    start.disabled = pending !== null && !card;
+    if (error && !opened) summary.textContent = error;
+    else if (pending && !opened) summary.textContent = synced ? 'Saving your review…' : 'Review saved on this device. Waiting to sync.';
+    else if (card && session) summary.textContent = (session.total - session.step) + ' left in this session';
+    else if (available) summary.textContent = available + (available === 1 ? ' expression ready' : ' expressions ready');
+    else if (snapshot?.nextDue) summary.textContent = 'Next review ' +
+      new Intl.DateTimeFormat('en', { month: 'short', day: 'numeric' }).format(snapshot.nextDue);
+    else if (!snapshot) summary.textContent = readerSyncStatus === 'unavailable' ? 'Review is unavailable while offline.' : 'Checking for expressions…';
+    else summary.textContent = 'Add an expression below to start reviewing it.';
+
+    for (const button of list.querySelectorAll('[data-review-preference]')) {
+      if (!(button instanceof HTMLButtonElement)) continue;
+      const preference = snapshot?.entries[button.dataset.reviewPreference ?? ''];
+      const included = preference?.preference === 'include' ||
+        (preference?.preference !== 'exclude' && (preference?.suggested || Boolean(preference?.dueAt)));
+      button.textContent = included ? 'Remove from review' : 'Add to review';
+      button.disabled = pending !== null;
+      button.hidden = !preference;
+    }
+
+    if (!opened) return;
+    const next = session ? session.id + ':' + session.step : '';
+    const changed = shown !== next;
+    if (changed) {
+      shown = next;
+      revealed = false;
+      hinted = false;
+    }
+    const starting = pending?.type === 'start' && !card;
+    const finished = Boolean(session && !card && !starting);
+    heading.textContent = card?.lemma ?? (finished ? 'Review complete' : 'Review');
+    heading.lang = 'en';
+    progress.textContent = session && !starting ? card
+      ? (session.step + 1) + ' / ' + session.total : session.total + ' / ' + session.total : '';
+    meter.style.width = session?.total && !starting ? (100 * (session.step + Number(!!card)) / session.total) + '%' : '0%';
+    prompt.textContent = card ? revealed ? 'Did you remember this meaning?' :
+      'Recall the meaning before revealing the answer.' : starting ? 'Preparing your review…' :
+      finished && session?.total ? 'You reviewed ' + session.total + (session.total === 1 ? ' expression.' : ' expressions.') :
+      'Choose expressions in Vocabulary to start a review.';
+    example.textContent = card?.expression.sentence ?? '';
+    example.hidden = !(card?.expression.sentence && (card.showContext || hinted || revealed));
+    feedback.hidden = !card || !revealed;
+    translation.textContent = card?.expression.translation ?? '';
+    source.textContent = card?.expression.title ?? '';
+    source.href = card?.expression.href ?? '/vocabulary';
+    hint.hidden = !example.hidden || !example.textContent || revealed;
+    reveal.hidden = !card || revealed;
+    again.hidden = !card || !revealed;
+    remembered.hidden = again.hidden;
+    more.hidden = !finished || !available;
+    more.disabled = !!pending;
+    again.disabled = !!pending;
+    remembered.disabled = !!pending;
+    status.textContent = error || (!pending ? '' : synced ? 'Saving your review…' : 'Saved on this device. Waiting to sync.');
+    if (!wasOpen || changed || latestSession !== (session?.id ?? '')) heading.focus({ preventScroll: true });
+    latestSession = session?.id ?? '';
+  }
+
+  start.addEventListener('click', () => {
+    const session = current();
+    if (session?.queue[session.step]) {
+      opened = true;
+      shown = '';
+      render();
+      window.scrollTo(0, 0);
+    } else if (snapshot?.available) {
+      opened = true;
+      push({ type: 'start', after: snapshot.session?.id ?? null });
+      window.scrollTo(0, 0);
+    }
+  });
+  more.addEventListener('click', () => {
+    if (snapshot?.session && snapshot.available) push({ type: 'start', after: snapshot.session.id });
+  });
+  exit.addEventListener('click', () => {
+    opened = false;
+    render();
+    const title = home.querySelector('h1');
+    if (start.hidden) title?.focus();
+    else start.focus();
+  });
+  hint.addEventListener('click', () => {
+    hinted = true;
+    render();
+    reveal.focus();
+  });
+  reveal.addEventListener('click', () => {
+    revealed = true;
+    render();
+    if (!pending) remembered.focus();
+    else heading.focus();
+  });
+  /** @param {'again'|'remembered'} grade */
+  function answer(grade) {
+    const session = current();
+    if (!session?.queue[session.step] || !revealed) return;
+    push({ type: 'answer', id: session.id, step: session.step, grade, answeredAt: Date.now() });
+  }
+  again.addEventListener('click', () => answer('again'));
+  remembered.addEventListener('click', () => answer('remembered'));
+  list.addEventListener('click', event => {
+    if (!(event.target instanceof HTMLButtonElement)) return;
+    const key = event.target.dataset.reviewPreference;
+    if (!key) return;
+    push({ type: 'preference', key, preference: event.target.textContent === 'Add to review' ? 'include' : 'exclude' });
+  });
+  registerVocabularyReview(() => pending ?? true);
+  window.addEventListener('vocabularyreviewchange', event => {
+    if (!(event instanceof CustomEvent)) return;
+    const data = event.detail;
+    snapshot = data.snapshot;
+    let anotherPending = false;
+    try { localStorage.setItem(snapshotKey, JSON.stringify(snapshot)); }
+    catch { /* The server remains the source of truth when the cache is full. */ }
+    try {
+      if (pending && data.request === pending) {
+        const shared = readCache(pendingKey, null);
+        if (JSON.stringify(shared) === JSON.stringify(pending)) localStorage.removeItem(pendingKey);
+        else anotherPending = shared !== null;
+        pending = readCache(pendingKey, null);
+      }
+    } catch { /* A confirmed server update can be fetched on the next visit. */ }
+    if (anotherPending) scheduleSync();
+    render();
+  });
+  window.addEventListener('storage', event => {
+    if (event.key === pendingKey) {
+      pending = readCache(pendingKey, null);
+      snapshot = readCache(snapshotKey, snapshot);
+      if (pending) scheduleSync();
+      render();
+    }
+  });
+  window.addEventListener('readersyncstatus', render);
+  render();
+  return render;
+}

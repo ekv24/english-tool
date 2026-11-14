@@ -1,0 +1,43 @@
+{
+  "id": "reading-a-latency-report",
+  "title": "Reading a Latency Report",
+  "author": "English Tool",
+  "source": "",
+  "description": "A short guide to percentiles and the effect of traffic mix on response times.",
+  "glossaryLanguage": "en",
+  "items": [
+    {
+      "slug": "introduction",
+      "title": "Introduction",
+      "original": "introduction.html",
+      "type": "intro"
+    },
+    {
+      "slug": "01-read-a-percentile",
+      "title": "1 - Read a percentile",
+      "number": "1",
+      "original": "01-read-a-percentile.html",
+      "type": "chapter"
+    },
+    {
+      "slug": "02-compare-like-with-like",
+      "title": "2 - Compare like with like",
+      "number": "2",
+      "original": "02-compare-like-with-like.html",
+      "type": "chapter"
+    }
+  ],
+  "toc": [
+    {
+      "title": "Response times",
+      "entries": [
+        {
+          "slug": "01-read-a-percentile"
+        },
+        {
+          "slug": "02-compare-like-with-like"
+        }
+      ]
+    }
+  ]
+}

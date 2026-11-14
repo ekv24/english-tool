@@ -1,0 +1,31 @@
+{
+  "01-read-a-percentile": [
+    {
+      "question": "What is the 90th percentile of the twenty response times using the book’s rule? How did you find it?",
+      "answer": "Multiply 20 by 0.90 to get rank 18. The 18th response time in the sorted table is 130 milliseconds.",
+      "anchor": "find-the-percentile"
+    },
+    {
+      "question": "The slowest request takes 1,200 milliseconds instead of 790. Why does the p95 stay at 240, and what figure would expose the change?",
+      "answer": "The p95 uses the 19th value, and only the 20th value changed. The count of requests slower than one second rises from zero to one.",
+      "anchor": "check-the-tail"
+    }
+  ],
+  "02-compare-like-with-like": [
+    {
+      "question": "On Wednesday, 95 requests are for browsing and five are ticket purchases. What overall p95 would you expect if both activities keep the same response times?",
+      "answer": "The p95 would be 80 milliseconds. In the sorted list, the 95th response is the final browse request. The five purchases occupy ranks 96 through 100.",
+      "anchor": "compare-the-traffic-mix"
+    },
+    {
+      "question": "You want to know whether buying tickets got slower. Why would you show the number of purchases next to each daily purchase p95?",
+      "answer": "A p95 based on very few purchases gives limited evidence about typical buying conditions. Showing the counts tells readers how much data each estimate describes.",
+      "anchor": "break-down-the-results"
+    },
+    {
+      "question": "A browser report shows a higher response time than the server report for the same request. What should you check before treating this as a measurement error?",
+      "answer": "Check each timer’s start and end points. The browser may include the time spent sending the request and receiving the response, while the server timer covers only its own work.",
+      "anchor": "match-the-measurement"
+    }
+  ]
+}

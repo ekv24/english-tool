@@ -1,0 +1,30 @@
+<h1 id="compare-like-with-like">2 - Compare like with like</h1>
+<p>On Monday, the museum website recorded a p95 of 80 milliseconds. On Tuesday, it recorded 400 milliseconds. Before asking what changed in the website, check what changed in the requests.</p>
+
+<h2 id="compare-the-traffic-mix">Compare the traffic mix</h2>
+<p>For this example, assume that every request to browse exhibitions takes 80 milliseconds and every request to buy a tour ticket takes 400 milliseconds. Both days have one hundred requests. Only the traffic mix changes.</p>
+<div class="book-table">
+  <table>
+    <caption>Requests by activity and the overall 95th percentile.</caption>
+    <thead>
+      <tr><th scope="col">Day</th><th scope="col">Browse</th><th scope="col">Buy</th><th scope="col">Overall p95</th></tr>
+    </thead>
+    <tbody>
+      <tr><th scope="row">Monday</th><td>96</td><td>4</td><td>80 ms</td></tr>
+      <tr><th scope="row">Tuesday</th><td>90</td><td>10</td><td>400 ms</td></tr>
+    </tbody>
+  </table>
+</div>
+<figure id="traffic-mix-chart">
+  <img src="/books/reading-a-latency-report/figures/traffic-mix.png" data-original="traffic-mix.png" alt="The 95th request by activity" width="760" height="330">
+  <figcaption>The dashed line marks the 95th request. It falls in the browsing segment on Monday and the ticket purchase segment on Tuesday.</figcaption>
+</figure>
+<p>The 95th request in order is a browse request on Monday and a ticket purchase on Tuesday. Both activities take the same time as before. The overall percentile rises because ticket purchases make up a larger share of the requests.</p>
+
+<h2 id="break-down-the-results">Break down the results</h2>
+<p>Calculate response times separately for browsing and buying. Each activity has the same p95 on both days, which explains the apparent slowdown in the overall report. In a real report, include the number of requests behind each figure. Four purchases on Monday give very little evidence about how buying works when the museum is busy.</p>
+<p>It can also help to look at changes within an activity. A longer response time for ticket purchases might affect all purchases, or it might be limited to a particular tour. The right breakdown depends on the question you are trying to answer.</p>
+
+<h2 id="match-the-measurement">Match the measurement</h2>
+<p>Check where each timer starts and stops. A browser can measure how long the visitor waits, including the connection to the website. A timer on the server can start after the request arrives and stop before the response reaches the visitor. Both numbers describe time spent waiting, but they cover different parts of the trip.</p>
+<p>When comparing reports, use the same definition of a request, the same units, and the same start and end points. If you are deciding whether a recent change slowed down purchases, compare measurements for purchases taken under similar conditions.</p>

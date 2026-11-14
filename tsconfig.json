@@ -1,0 +1,13 @@
+{
+  "compilerOptions": {
+    "allowJs": true,
+    "checkJs": true,
+    "noEmit": true,
+    "strict": true,
+    "skipLibCheck": true,
+    "target": "ES2023",
+    "module": "NodeNext",
+    "lib": ["ES2023", "DOM", "DOM.Iterable"]
+  },
+  "include": ["server.mjs", "translation.mjs", "public/*.js"]
+}

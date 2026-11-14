@@ -1,0 +1,28 @@
+<h1 id="read-a-percentile">1 - Read a percentile</h1>
+<p>A latency report starts with a set of measurements. Here, each measurement is the time from the arrival of a request at the museum website to the moment the website finishes sending a response. Think of every request as one observation.</p>
+
+<h2 id="sort-the-measurements">Sort the measurements</h2>
+<p>Suppose the website records twenty requests in one short observation window. The table lists their response times from fastest to slowest. Some values occur twice because different requests took the same amount of time.</p>
+<div class="book-table">
+  <table>
+    <caption>Twenty response times in milliseconds, ordered by rank.</caption>
+    <thead>
+      <tr><th scope="col">Ranks</th><th scope="col">Response times (ms)</th></tr>
+    </thead>
+    <tbody>
+      <tr><th scope="row">1–5</th><td>78, 82, 83, 85, 85</td></tr>
+      <tr><th scope="row">6–10</th><td>86, 87, 90, 91, 94</td></tr>
+      <tr><th scope="row">11–15</th><td>95, 96, 98, 100, 102</td></tr>
+      <tr><th scope="row">16–20</th><td>105, 110, 130, 240, 790</td></tr>
+    </tbody>
+  </table>
+</div>
+<p>The median lies halfway between the two middle measurements, 94 and 95, so it is 94.5 milliseconds. This describes the center of the sample. If you want to know what happened to visitors who waited longer, look higher up the ordered list.</p>
+
+<h2 id="find-the-percentile">Find the 95th percentile</h2>
+<p>For the 95th percentile, multiply the number of observations by 0.95 and round up to the next integer if needed. Then read the measurement at that rank. This rule is called the nearest-rank method. Other methods can give slightly different values for a small sample.</p>
+<p>Here, 0.95 × 20 = 19. The 19th measurement is 240 milliseconds, so the 95th percentile, or p95, is 240 milliseconds. Nineteen of the twenty requests took 240 milliseconds or less. The slowest request took 790 milliseconds, which is more than three times as long.</p>
+
+<h2 id="check-the-tail">Check the slowest requests</h2>
+<p>The tail of this distribution contains the relatively rare requests that take a long time. If the slowest request rises to 1,200 milliseconds while the other nineteen stay the same, the p95 is still 240 milliseconds. The report can show the p95 alongside the number of requests above a given threshold, such as one second, to make that change visible.</p>
+<p>Keep the sample size in view. In a sample of twenty, one request accounts for five percent of the observations. A single delay can therefore have a large effect on a high percentile. A larger sample gives you more evidence about how often slow responses occur.</p>

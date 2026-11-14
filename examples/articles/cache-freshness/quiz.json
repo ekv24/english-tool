@@ -1,0 +1,22 @@
+[
+  {
+    "question": "A visitor opens the page at 12:00:29. Does that visit let the website reuse the original count until 12:00:59? Explain.",
+    "answer": "No. Thirty seconds are counted from when the website saved the answer at noon. The visit at 12:00:29 can use the count, but a visit from 12:00:30 onward needs a fresh answer.",
+    "anchor": "reuse-a-recent-answer"
+  },
+  {
+    "question": "The page says twelve places are left and a group tries to book ten. Why should the booking system check again even if the cache lifetime is short?",
+    "answer": "A reservation can change the count during any reuse period. The page may show a count of twelve while only eight places are available. The booking system needs to check the current count when it accepts the reservation.",
+    "anchor": "the-cost-of-being-wrong"
+  },
+  {
+    "question": "What would a visitor see at 12:00:20 if the booking system sent a notice at 12:00:15 and the website removed the saved count? What would change if the notice never arrived?",
+    "answer": "If the notice arrived, the website would need a fresh count and show eight places. With a lost notice, it could show twelve until 12:00:30, when the saved answer expires.",
+    "anchor": "remove-an-outdated-entry"
+  },
+  {
+    "question": "Friday and Saturday always show the same ticket count, even when the cache lifetime is reduced. Which part of the design would you investigate first?",
+    "answer": "Check whether both tours use the same cache key. A key that includes the date as well as the tour lets the website keep the counts separate.",
+    "anchor": "agree-on-the-cache-key"
+  }
+]

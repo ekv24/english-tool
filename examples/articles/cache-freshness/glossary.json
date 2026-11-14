@@ -1,0 +1,14 @@
+{
+  "cache": ["temporary store for reuse", "Here the website keeps a copy of a recent ticket count so it can answer a later request quickly."],
+  "trade-off": ["a gain with an accompanying cost", "Reusing a count saves time, but the answer may be out of date."],
+  "stale": ["out of date", "A saved count becomes stale as soon as a booking changes the real count, even if the saved entry can still be used."],
+  "time to live": ["maximum reuse period", "The website is allowed to reuse a saved answer for thirty seconds after storing it."],
+  "cache hit": ["found a reusable stored answer", "The website finds a count it can still use and avoids asking the booking system again."],
+  "expires": ["reaches the end of its allowed lifetime", "After thirty seconds, another visit makes the website request a fresh count."],
+  "discrepancy": ["difference between values that should agree", "A cached count of twelve disagrees with the booking system’s current count of eight."],
+  "tolerate": ["continue working with", "The exhibition list remains useful even if a recent change takes a few minutes to appear."],
+  "cache invalidation": ["discarding a stored answer that can no longer be trusted", "A booking update triggers removal of the saved count for that tour."],
+  "cache miss": ["no reusable stored answer was found", "When there is no usable count for the requested tour, the website asks the booking system for one."],
+  "expiry": ["end of the allowed reuse period", "A fixed expiry keeps a lost notice from leaving the same count in use indefinitely."],
+  "cache key": ["identifier used to find a stored answer", "The date and tour together identify which saved ticket count to use."]
+}

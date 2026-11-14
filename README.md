@@ -4,9 +4,11 @@ English Tool is a self-hosted web reader for learning vocabulary from English ar
 
 ## Quick start
 
-Install Node.js 24 or later. From the repository directory, run:
+Install Node.js 24 or later, then run:
 
 ```sh
+git clone https://github.com/ekv24/english-tool.git
+cd english-tool
 npm ci
 npm start
 ```
