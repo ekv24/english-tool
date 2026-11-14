@@ -2,6 +2,8 @@
 
 English Tool is a self-hosted web reader for learning vocabulary from English articles and books at any level. Click a word or select a phrase to look it up in place. Save useful expressions with their original sentences, review them later, and return to the passage they came from. The library keeps your reading position and completion status, and optional quizzes let you check your understanding of a text.
 
+![English Tool library with the bundled book and article](docs/screenshots/library.png)
+
 ## Quick start
 
 Install Node.js 24 or later, then run:
@@ -16,6 +18,12 @@ npm start
 Open [English Tool](http://127.0.0.1:4173/), choose **When a cached answer goes stale**, and click **stale** in the text to see its English gloss. Click **Save expression**, then open **Vocabulary**. Open the saved entry, select **Add to review** if needed, and start a review. **Reading a Latency Report** demonstrates book navigation and chapter quizzes. The examples work without a translation model.
 
 To read your own texts, see [Adding articles and books](docs/materials.md). If you use Codex, the repository includes the [material preparation skill](.agents/skills/prepare-english-tool-material/SKILL.md).
+
+## Look up a word while reading
+
+Click a word or select a phrase to open a lookup next to the text. The screenshot shows OPUS-MT translating **tickets** into Russian.
+
+![The sample article with the lookup for tickets open, showing the Russian translation and a Save expression button](docs/screenshots/word-lookup.png)
 
 ## Choose a lookup language
 
