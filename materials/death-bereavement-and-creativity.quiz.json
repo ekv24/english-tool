@@ -1,0 +1,27 @@
+[
+  {
+    "question": "Why do the authors compare auction prices with inclusion in museum collections?",
+    "answer": "Both are indirect measures of the importance of a painting. Museum inclusion gives a second way to check whether the pattern is specific to market prices.",
+    "anchor": "section-7"
+  },
+  {
+    "question": "Why does the paper give each painting a weight inversely proportional to the number of paintings by its artist?",
+    "answer": "This gives each artist equal total weight, so prolific artists or artists with more auction records do not dominate the results.",
+    "anchor": "section-5"
+  },
+  {
+    "question": "What does the random-assignment exercise help distinguish?",
+    "answer": "It checks whether the estimation procedure tends to produce a similar price pattern even when dates are assigned at random. The placebo estimates do not show a statistically significant pattern like the main result.",
+    "anchor": "section-6-2"
+  },
+  {
+    "question": "Why does the model allow the relation between age and price to vary across birth cohorts?",
+    "answer": "Different generations of painters may produce their most valued works at different ages. The model gives each cohort its own age profile so that this variation is not assigned to bereavement.",
+    "anchor": "section-4"
+  },
+  {
+    "question": "What limitation should you keep in mind when interpreting the estimated decline as a change in creativity?",
+    "answer": "Prices and museum selection capture how work is valued through particular market and institutional processes. They are indirect measures of creativity, and the observed data cover selected artists and paintings.",
+    "anchor": "section-8"
+  }
+]

@@ -1,0 +1,9 @@
+{
+  "id": "causal-inference",
+  "description": "A practical guide to experiments, econometrics, and estimating causal effects in Python.",
+  "start": "01-introduction-to-causality",
+  "startLabel": "Start chapter 1",
+  "license": "LICENSE.txt",
+  "licenseName": "MIT license",
+  "math": true
+}

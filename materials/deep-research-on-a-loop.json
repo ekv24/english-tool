@@ -1,0 +1,21 @@
+{
+  "id": "deep-research-on-a-loop",
+  "title": "Deep Research on a Loop: Agent-Driven Construction of Auditable Structured Datasets",
+  "source": "https://raulasosa.com/assets/papers/deep-research-on-a-loop.pdf",
+  "sourcePage": 4,
+  "format": "pdf",
+  "publisher": "Raul A. Sosa",
+  "kind": "Working paper",
+  "author": "Santiago Afonso, Sebastian Galiani, Ramiro H. Gálvez, and Raul A. Sosa",
+  "date": "2 August 2026",
+  "edition": "12-page PDF hosted by Raul A. Sosa. Date from the PDF creation and modification metadata.",
+  "sha256": "1679294d9fa4af6279534f156c85776a15d2c91757528ecf78229b1cfd5247de",
+  "license": "No reuse license stated in this PDF or on the author's research page.",
+  "previewMedia": "preview.png",
+  "previewOrigin": "Figure 2 (page 5), cropped to the implementation stage and fitted to the 4:3 thumbnail.",
+  "figureMethods": {
+    "figure-1": "Page 4. Recolored PDF vector fills and strokes before rasterizing the same crop at 3×. Original geometry and labels are retained.",
+    "figure-2": "Page 5. Recolored PDF vector fills and strokes before rasterizing the same crop at 3×. Original geometry and labels are retained.",
+    "figure-3": "Page 7. Redrawn from the five published bins and bar labels: 6–8: 5, 9–11: 33, 12–14: 34, 15–17: 12, 18–20: 2. Original baseline, counts and axis title are retained."
+  }
+}

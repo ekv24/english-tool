@@ -1,0 +1,22 @@
+[
+  {
+    "question": "Why isn’t context compaction enough for an agent to reliably pick up work on an app in the next session?",
+    "answer": "Compaction makes the history fit into the context window, but it can lose details about unfinished work. The next session can recover that state from project files, commit history, and progress notes, then run the app to check what actually works.",
+    "anchor": "the-long-running-agent-problem"
+  },
+  {
+    "question": "In a new session, the agent sees a working sign-in screen and declares the whole app finished. What part of the authors’ approach should prevent that?",
+    "answer": "The first session leaves a list of features with testable user scenarios. Later sessions work through them one at a time and mark each one complete after testing it. A working sign-in screen clears one item. The rest of the list still shows what needs work.",
+    "anchor": "feature-list"
+  },
+  {
+    "question": "The API returns a successful response, but clicking a button in the app does nothing. What test would you add, and what kind of bug might that test still miss?",
+    "answer": "Run the whole scenario in a browser. Open the app, click the button, and check that the user sees the expected result. The authors point out a specific blind spot in their setup: the agent couldn’t see native browser dialogs through Puppeteer MCP.",
+    "anchor": "testing"
+  },
+  {
+    "question": "Does this experiment establish that a dedicated testing agent would outperform a single general-purpose agent? How would you test that?",
+    "answer": "The authors leave this question open. Compare the two setups on the same tasks with similar budgets. Use the same test scenarios and track which defects each setup finds and fixes. The article focuses on web app development, so applying the method to other domains would also need testing.",
+    "anchor": "future-work"
+  }
+]

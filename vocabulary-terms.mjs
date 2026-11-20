@@ -150,9 +150,11 @@ export function describeExpression(entry, index) {
   const proposed = baseForm(entry.text, entry.sentence);
   const originalGloss = gloss?.get(normalized(entry.text));
   const proposedGloss = gloss?.get(normalized(proposed));
-  const lemma = originalGloss && !proposedGloss && entry.text.includes(' ') ? entry.text : proposed;
-  const translation = originalGloss && proposedGloss && normalized(entry.translation) === normalized(originalGloss)
-    ? proposedGloss : entry.translation;
+  const usesGlossaryTranslation = originalGloss !== undefined && normalized(entry.translation) === normalized(originalGloss);
+  const keepsGlossaryForm = originalGloss !== undefined && proposedGloss === undefined &&
+    (entry.text.includes(' ') || usesGlossaryTranslation);
+  const lemma = keepsGlossaryForm ? entry.text : proposed;
+  const translation = usesGlossaryTranslation && proposedGloss !== undefined ? proposedGloss : entry.translation;
   const isGlossaryTerm = !!(originalGloss || proposedGloss);
   const forms = [...new Set([entry.text, lemma].map(searchTokens).filter(words => words.length).map(pattern))];
   const matches = index.pages.filter(page => {

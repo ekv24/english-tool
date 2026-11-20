@@ -1,0 +1,27 @@
+[
+  {
+    "question": "Your agent produces 30 detailed country memos in response to the same question. Why might they be unsuitable for building a comparable dataset?",
+    "answer": "Different memos can use different evidence standards and implicit judgment calls. A fixed instrument and evidence policy make the outputs comparable and let readers trace each observation to its source.",
+    "anchor": "section.1"
+  },
+  {
+    "question": "Two qualifying sources give different values for a field. What should the agent return, and what must it record so a reviewer can check the result?",
+    "answer": "It should follow the protocol’s conflict rule, which can prioritize a source, retain both values, or send the case for human review. The citation contract requires verbatim evidence and a locator, and unresolved conflicts can be recorded as explicit gaps.",
+    "anchor": "subsection.3.2"
+  },
+  {
+    "question": "An implementation agent discovers that a coding rule misses a common legal structure. How could the team correct the rule while keeping the run auditable?",
+    "answer": "Return the issue to the design stage, create a tracked protocol version with the correction, and re-execute with that version while retaining the original run.",
+    "anchor": "subsection.3.3"
+  },
+  {
+    "question": "Why would a team handle an unreadable report differently from a case where no qualifying report is public?",
+    "answer": "An unreadable report can be assigned to a better parser or a human reviewer. A case with no qualifying public report remains a documented coverage gap under the protocol.",
+    "anchor": "subsection.4.3"
+  },
+  {
+    "question": "What does the corroborating excerpt add to the Rwanda VAT record when the primary excerpt already states 1.8% of GDP?",
+    "answer": "The primary excerpt gives the number. The corroborating excerpt defines the benchmark VAT base, which lets a reviewer check why the number belongs in the tax-expenditure field.",
+    "anchor": "figure.caption.9"
+  }
+]

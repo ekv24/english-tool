@@ -78,11 +78,12 @@ test('an Ollama lookup uses the configured language and relevant glossary', asyn
   const query = new URLSearchParams({ text: 'treatment', sentence: 'The treatment began on Monday.', context: '1' });
   const response = await fetch(url + '/read/field-study/lookup?' + query);
   assert.equal((await response.json()).text, 'Un cambio introducido durante el estudio.\n\nLa intervención empezó el lunes.');
-  assert.equal(calls.length, 1);
-  assert.equal(calls[0].path, '/api/chat');
-  assert.equal(calls[0].request.model, 'example:1');
-  assert.match(calls[0].request.messages[0].content, /Spanish \(es\).*\ntreatment → intervención/s);
-  assert.doesNotMatch(calls[0].request.messages[0].content, /muestra/);
+  // Requests to /api/generate only keep the model loaded for the next lookup.
+  const chats = calls.filter(call => call.path === '/api/chat');
+  assert.equal(chats.length, 1);
+  assert.equal(chats[0].request.model, 'example:1');
+  assert.match(chats[0].request.messages[0].content, /Spanish \(es\).*\ntreatment → intervención/s);
+  assert.doesNotMatch(chats[0].request.messages[0].content, /muestra/);
   const bundled = await fetch(url + '/read/cache-freshness/lookup?text=stale');
   assert.equal((await bundled.json()).source, 'Ollama');
 });

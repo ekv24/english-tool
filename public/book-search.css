@@ -10,7 +10,7 @@
   width: min(100%, 430px);
   min-height: 44px;
   padding: 9px 13px;
-  border: 1px solid #d8d4c8;
+  border: 1px solid var(--line-strong);
   border-radius: 8px;
   background: var(--panel);
   color: var(--ink);

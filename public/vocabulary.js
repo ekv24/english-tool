@@ -1,67 +1,7 @@
-import { expressionKey } from './reader-records.js';
-import { readerSyncStatus, stateRecords, stateValue, storeState } from './sync.js';
+import { readerSyncStatus, stateRecords, storeState } from './sync.js';
 import { initReview } from './vocabulary-review.js';
 
-/** @typedef {import('./reader-records.js').Expression} Expression */
 /** @typedef {import('./reader-records.js').SavedExpression} SavedExpression */
-
-const save = document.querySelector('button[data-save-expression]');
-/** @type {Expression | null} */
-let selection = null;
-
-/** @param {string} href */
-function passageHref(href) {
-  try {
-    const url = new URL(href, location.origin);
-    const passage = /^\/(?:read\/[a-z0-9-]+|books\/[a-z0-9-]+\/[\w-]+)$/;
-    return url.origin === location.origin && passage.test(url.pathname) && url.hash
-      ? url.pathname + url.hash
-      : null;
-  } catch { return null; }
-}
-
-/** @param {boolean} saved */
-function updateSave(saved) {
-  if (!save) return;
-  save.setAttribute('aria-disabled', String(saved));
-  save.textContent = saved ? 'Saved' : 'Save expression';
-}
-
-export function resetSave() {
-  selection = null;
-  if (!(save instanceof HTMLButtonElement)) return;
-  updateSave(false);
-  save.hidden = true;
-}
-
-/** @param {Expression} entry */
-export function offerSave(entry) {
-  resetSave();
-  const href = passageHref(entry.href);
-  if (!(save instanceof HTMLButtonElement) || !href || !entry.text.trim() || !entry.translation.trim()) return;
-  selection = { ...entry, href };
-  save.hidden = false;
-  refreshSave();
-}
-
-function refreshSave() {
-  if (!selection) return;
-  updateSave(Boolean(stateValue(expressionKey(selection))));
-}
-
-save?.addEventListener('click', () => {
-  if (!selection || save.getAttribute('aria-disabled') === 'true') return;
-  try {
-    const key = expressionKey(selection);
-    if (!stateValue(key)) {
-      const now = Date.now();
-      storeState(key, { ...selection, savedAt: now }, now);
-    }
-    updateSave(true);
-  } catch {
-    save.textContent = 'Try saving again';
-  }
-});
 
 /** @param {SavedExpression} entry @param {string} key @param {() => void} remove */
 function expressionCard(entry, key, remove) {
@@ -198,4 +138,3 @@ function initVocabulary(container, status) {
 }
 
 if (vocabulary && count) initVocabulary(vocabulary, count);
-if (save) window.addEventListener('readerstatechange', refreshSave);

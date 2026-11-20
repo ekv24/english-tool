@@ -6,7 +6,8 @@ const comparison = dialog?.querySelector('.book-figure-comparison');
 const sizeToggle = dialog?.querySelector('button[data-figure-size]');
 const heading = dialog?.querySelector('h2');
 const book = dialog?.closest('[data-book]')?.getAttribute('data-book');
-if (dialog instanceof HTMLDialogElement && comparison instanceof HTMLElement && sizeToggle && heading && book) {
+const originals = book ? '/books/' + book + '/images/' : dialog?.closest('[data-figure-originals]')?.getAttribute('data-figure-originals');
+if (dialog instanceof HTMLDialogElement && comparison instanceof HTMLElement && sizeToggle && heading && originals) {
   const images = [...comparison.querySelectorAll('img')];
   const links = [...comparison.querySelectorAll('a')];
   const views = [...comparison.querySelectorAll('.book-figure-view')];
@@ -37,7 +38,7 @@ if (dialog instanceof HTMLDialogElement && comparison instanceof HTMLElement && 
     button.addEventListener('click', () => {
       figure = image.src;
       heading.textContent = label;
-      const paths = [figure, '/books/' + book + '/images/' + encodeURIComponent(image.dataset.original ?? '')];
+      const paths = [figure, originals + encodeURIComponent(image.dataset.original ?? '')];
       paths.forEach((path, i) => {
         images[i].src = path;
         images[i].alt = label;

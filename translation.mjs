@@ -14,14 +14,17 @@ if (model && (!/^[a-z0-9_.-]+\/[a-z0-9_.-]+$/i.test(model) ||
 }
 const cacheDir = fileURLToPath(new URL('models/', dataRoot));
 const downloadModel = process.argv.includes('--download-model');
-const ollamaModel = process.env.ENGLISH_TOOL_OLLAMA_MODEL;
+// ENGLISH_TOOL_SENTENCE_MODEL is the earlier name of the Ollama model setting.
+const ollamaModel = process.env.ENGLISH_TOOL_OLLAMA_MODEL ?? process.env.ENGLISH_TOOL_SENTENCE_MODEL;
 const ollamaUrl = process.env.ENGLISH_TOOL_OLLAMA_URL || 'http://127.0.0.1:11434';
+// A local OPUS-MT model can take over when Ollama is slow, so Ollama gets less time in that case.
+const ollamaTimeout = model ? 8000 : 15_000;
 
 export const hasLookupModel = !!(model || ollamaModel);
 /** @type {Promise<import('@huggingface/transformers').TranslationPipeline> | undefined} */
 let translator;
 function loadTranslator() {
-  if (!model) throw new Error('Set ENGLISH_TOOL_OPUS_MODEL to a Transformers.js-compatible model for your target language.');
+  if (!model) return Promise.reject(new Error('Set ENGLISH_TOOL_OPUS_MODEL to a Transformers.js-compatible model for your target language.'));
   translator ??= import('@huggingface/transformers').then(({ env, pipeline }) => {
     env.cacheDir = cacheDir;
     env.allowRemoteModels = downloadModel;
@@ -37,13 +40,54 @@ function loadTranslator() {
   return translator;
 }
 
+/** Starts loading OPUS-MT without waiting for it. */
+export function warmTranslation() {
+  if (model) loadTranslator().catch(() => {});
+}
+
+// Repeated lookups of the same word or sentence skip the models.
+/** @type {Map<string,string>} */
+const results = new Map();
+/** @param {string} key */
+function recall(key) {
+  const value = results.get(key);
+  if (value !== undefined) { results.delete(key); results.set(key, value); }
+  return value;
+}
+/** @param {string} key @param {string} value */
+function remember(key, value) {
+  results.set(key, value);
+  if (results.size > 2000) results.delete(/** @type {string} */ (results.keys().next().value));
+  return value;
+}
+
 /** @param {string} text @param {{maxNewTokens?:number}} [options] */
 async function translateWithOpus(text, { maxNewTokens = 160 } = {}) {
+  const key = 'opus:' + maxNewTokens + ':' + text;
+  const cached = recall(key);
+  if (cached !== undefined) return cached;
   const run = await loadTranslator();
   const output = await run(text, { max_new_tokens: maxNewTokens });
   const translation = Array.isArray(output) ? output[0]?.translation_text : undefined;
   if (!translation) throw new Error('Empty translation');
-  return translation;
+  return remember(key, translation);
+}
+
+let warmedAt = 0;
+
+/**
+ * Asks Ollama to load its model while the reader is still reading, so the first
+ * "Translate sentence" does not wait for a cold start. Repeats at most every five minutes.
+ */
+export function warmSentenceModel() {
+  if (!ollamaModel || Date.now() - warmedAt < 5 * 60_000) return;
+  warmedAt = Date.now();
+  fetch(new URL('/api/generate', ollamaUrl), {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    signal: AbortSignal.timeout(30_000),
+    body: JSON.stringify({ model: ollamaModel, keep_alive: '30m' }),
+  }).then(response => response.body?.cancel(), () => { warmedAt = 0; });
 }
 
 /** @param {string} sentence @param {ReadonlyMap<string,[string,string]>} glossary */
@@ -75,22 +119,28 @@ function glossaryForSentence(sentence, glossary) {
 /** @param {string} text @param {ReadonlyMap<string,[string,string]>} glossary @param {boolean} sentence */
 async function translateWithOllama(text, glossary, sentence) {
   const terms = glossaryForSentence(text, glossary);
-  const terminology = terms ? 'Use these glossary meanings where relevant. Do not repeat the glossary.\n' + terms + '\n\n' : '';
+  const nativeTranslation = !definitionMode && /^translategemma(?::|$)/i.test(ollamaModel ?? '');
+  const terminology = !terms ? '' : nativeTranslation
+    ? 'Use the following glossary when translating. Preserve the ' + targetLabel + ' terminology below, changing only its grammatical form as needed. ' +
+      'Keep the meaning of each glossary term in the output. Do not translate or repeat this glossary.\n' + terms + '\n\n'
+    : 'Use these glossary meanings where relevant. Do not repeat the glossary.\n' + terms + '\n\n';
   const task = definitionMode
     ? (sentence ? 'Explain this English sentence in plain English.' : 'Give only a short definition of this English expression in plain English.')
     : 'Translate this English text to ' + targetLabel + ' (' + targetLanguage + '). Return only the translation.';
-  const nativeTranslation = !definitionMode && /^translategemma(?::|$)/i.test(ollamaModel ?? '');
   const prompt = nativeTranslation
     ? 'You are a professional English (en) to ' + targetLabel + ' (' + targetLanguage + ') translator. ' +
       'Your goal is to accurately convey the meaning and nuances of the original English text while adhering to ' +
-      targetLabel + ' grammar, vocabulary, and cultural sensitivities.\n\n' +
+      targetLabel + ' grammar, vocabulary, and cultural sensitivities.\n' +
       terminology + 'Produce only the ' + targetLabel + ' translation, without any additional explanations or commentary. Please translate the following English text into ' +
       targetLabel + ':\n\n\n' + text
     : task + '\n\n' + terminology + text;
+  const key = 'ollama:' + ollamaModel + ':' + prompt;
+  const cached = recall(key);
+  if (cached !== undefined) return cached;
   const response = await fetch(new URL('/api/chat', ollamaUrl), {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    signal: AbortSignal.timeout(15_000),
+    signal: AbortSignal.timeout(ollamaTimeout),
     body: JSON.stringify({
       model: ollamaModel, stream: false, keep_alive: '30m',
       messages: [{ role: 'user', content: prompt }],
@@ -103,10 +153,15 @@ async function translateWithOllama(text, glossary, sentence) {
   if (result.done_reason !== 'stop' || typeof output !== 'string' || !output.trim()) {
     throw new Error('Ollama returned no complete lookup result');
   }
-  return output.trim();
+  warmedAt = Date.now();
+  return remember(key, output.trim());
 }
 
-/** @param {string} text @param {ReadonlyMap<string,[string,string]>} glossary @param {boolean} [sentence] */
+/**
+ * Looks up a selection with OPUS-MT and a surrounding sentence with Ollama when both are set.
+ * Falls back to OPUS-MT if Ollama is unavailable.
+ * @param {string} text @param {ReadonlyMap<string,[string,string]>} glossary @param {boolean} [sentence]
+ */
 export async function translate(text, glossary, sentence = false) {
   if (ollamaModel && (sentence || !model)) {
     try { return { text: await translateWithOllama(text, glossary, sentence), source: 'Ollama' }; }

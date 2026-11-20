@@ -1,0 +1,17 @@
+{
+  "id": "research-acceleration-jagged-frontier",
+  "title": "Research acceleration: The jagged frontier",
+  "source": "https://openai.com/index/research-acceleration-jagged-frontier/",
+  "publisher": "OpenAI",
+  "kind": "Article",
+  "author": "OpenAI",
+  "date": "November 18, 2026",
+  "edition": "English (United States) publication of November 18, 2026. The publisher HTML snapshot returned by Jina Reader is kept unchanged and pinned by SHA-256.",
+  "snapshotSource": "https://r.jina.ai/https://openai.com/index/research-acceleration-jagged-frontier/",
+  "sha256": "889a075b89800e9ad4fa4dc65c4cb417a73d6425eb32be6518fc0079ed5e5458",
+  "license": "OpenAI copyright notice. No separate reuse license stated on the article.",
+  "previewSource": "https://images.ctfassets.net/kftzwdyauwt9/2YS8yWiGpKflhlEnAkcLU/f51ead4391706f6c3198f0d61a0f147a/research-acceleration-the-jagged-frontier-social.png",
+  "previewOrigin": "Publisher's Open Graph artwork from the archived HTML.",
+  "figureMethod": "Static SVGs compiled from the embedded publisher Vega-Lite v6 specifications and data. The local source rendering uses print dimensions and resolves the publisher's color tokens. The reader copy changes SVG paint attributes only. The task chart shows all 27 tasks. The publisher's interactive charts remain available through Original.",
+  "compareFigures": true
+}

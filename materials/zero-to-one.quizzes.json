@@ -1,0 +1,170 @@
+{
+  "01-the-challenge-of-the-future": [
+    {
+      "question": "A company installs the same water filter in 100 towns. Another invents a filter that removes a pollutant no existing filter can handle. How would Thiel classify each achievement?",
+      "answer": "The rollout is horizontal progress because it spreads a solution that already works. The invention is vertical progress because it creates a capability that did not exist before.",
+      "anchor": "zero-to-one-the-future-of-progress"
+    },
+    {
+      "question": "Why does Thiel think a small team can be better placed to create something new than either a large organization or a lone inventor?",
+      "answer": "A team can combine the skills needed to carry out an ambitious idea. Keeping it small makes it easier to question established ideas and act without getting slowed down by layers of approval.",
+      "anchor": "startup-thinking"
+    }
+  ],
+  "02-party-like-its-1999": [
+    {
+      "question": "PayPal paid people to sign up and invite friends. Why did Thiel think the strategy could work even though each new user added to the company's costs?",
+      "answer": "The payments helped PayPal build a large network quickly. The plan was to earn enough from small fees on later transactions to cover what it had spent acquiring users.",
+      "anchor": "paypal-mania"
+    },
+    {
+      "question": "Some founders concluded after the dot-com crash that a good product should grow without a sales effort. How does Thiel challenge that conclusion?",
+      "answer": "The crash illustrated how selling could be wasteful when spending had little connection to a viable business. Thiel argues that companies still have to work out how to reach customers, even when the product is strong.",
+      "anchor": "lessons-learned"
+    }
+  ],
+  "03-all-happy-companies-are-different": [
+    {
+      "question": "A restaurant calls itself the only British pub on its block, while a leading search engine describes itself as one of many media businesses. What does each market definition help the company claim?",
+      "answer": "The pub draws a narrow boundary to look unique despite competing with other places to eat. The search engine draws a broad boundary to make its dominance in search look less significant.",
+      "anchor": "lies-people-tell"
+    },
+    {
+      "question": "Under what conditions could a monopoly benefit customers in Thiel's account, and when would it mainly transfer money from customers to the firm?",
+      "answer": "An innovative monopoly can give customers an option that did not exist and use its profits to fund further research. If products and choices stay fixed, a dominant firm can charge more because buyers have nowhere else to go.",
+      "anchor": "monopoly-capitalism"
+    }
+  ],
+  "04-the-ideology-of-competition": [
+    {
+      "question": "The online pet stores in the chapter raced to offer lower prices and better ads. Which decision did this rivalry make it harder for them to think clearly about?",
+      "answer": "They spent their effort on how to win and lost sight of whether selling pet supplies online was an attractive business in the first place.",
+      "anchor": "war-and-peace"
+    },
+    {
+      "question": "Why did merging with X.com make sense for Confinity as the technology bubble neared its end?",
+      "answer": "The companies were spending time and effort duplicating each other's work while a market crash threatened both. Combining gave them a better chance of surviving and building a business.",
+      "anchor": "war-and-peace"
+    }
+  ],
+  "05-last-mover-advantage": [
+    {
+      "question": "A new messaging app would be useful once everyone in a city joined. What would Thiel ask the founders to demonstrate before counting on network effects?",
+      "answer": "They would need to show that the app is useful to its first users while the network is still small. A close-knit group would give those users people to contact from the start.",
+      "anchor": "2-network-effects"
+    },
+    {
+      "question": "A startup enters a market before anyone else, but a later company creates the product customers use for decades. Which company has the advantage Thiel values, and why?",
+      "answer": "The later company has the last-mover advantage because its position lets it keep earning profits over time. The early lead matters only if it helps build a position the first company can sustain.",
+      "anchor": "the-last-will-be-first"
+    }
+  ],
+  "06-you-are-not-a-lottery-ticket": [
+    {
+      "question": "Two founders expect a better future. One keeps several paths open and waits to see what pays off. The other commits to making home energy cheaper over the next decade. How does Thiel distinguish their outlooks?",
+      "answer": "The first is an indefinite optimist who expects improvement without choosing how to bring it about. The second is a definite optimist who works toward a specific outcome.",
+      "anchor": "can-you-control-your-future"
+    },
+    {
+      "question": "Why would someone who saw the iPod as an accessory for Mac owners miss what Thiel admired about Apple's planning?",
+      "answer": "That view judged the iPod on its immediate use. Jobs saw it as the first step in a multi-year plan to build a new family of portable devices.",
+      "anchor": "the-return-of-design"
+    }
+  ],
+  "07-follow-the-money": [
+    {
+      "question": "A $500 million venture fund invests $1 million in a startup and gets $50 million back. Why might that success still be too small to carry the fund?",
+      "answer": "The investment returned fifty times its cost, yet it brought back only a tenth of the fund's capital. In Thiel's model, a fund depends on exceptional bets whose proceeds can be as large as the fund itself.",
+      "anchor": "the-power-law-of-venture-capital"
+    },
+    {
+      "question": "Why might an investor who works closely with ten young startups still underestimate how much more valuable one of them could become?",
+      "answer": "The companies can look similar in their early years. The gap grows as one compounds faster than the rest, and the eventual difference is much larger than what the investor sees in day-to-day work.",
+      "anchor": "why-people-dont-see-the-power-law"
+    }
+  ],
+  "08-secrets": [
+    {
+      "question": "In Thiel's example of Airbnb, what were travelers and property owners already doing, and what opportunity was hidden in those familiar activities?",
+      "answer": "Travelers were paying for hotel rooms while property owners had spare space they could not easily rent out. Connecting those groups unlocked a supply of accommodation that the existing market overlooked.",
+      "anchor": "the-case-for-secrets"
+    },
+    {
+      "question": "A founder suspects that customers are embarrassed to admit a problem. What kind of secret is she looking for, and how does it differ from a secret of nature?",
+      "answer": "She is looking for a secret about people, something they may not recognize in themselves or may be reluctant to say. A secret of nature concerns an undiscovered property of the physical world.",
+      "anchor": "how-to-find-secrets"
+    }
+  ],
+  "09-foundations": [
+    {
+      "question": "A founder owns shares and runs the company. A board member pushes for an IPO even though the founder wants more time to grow. How do Thiel's ownership, possession, and control help explain the conflict?",
+      "answer": "The founder has ownership through shares and possession through day-to-day management. The board exercises formal control, and a director seeking a quick return may have a different time horizon from the founder.",
+      "anchor": "ownership-possession-and-control"
+    },
+    {
+      "question": "Why might paying employees partly in equity encourage long-term commitment while also creating conflict over compensation?",
+      "answer": "A stake rewards people if the company becomes more valuable over time. Deciding how much each person gets can create resentment because early employees take more risk and later employees may contribute just as much.",
+      "anchor": "vested-interests"
+    }
+  ],
+  "10-the-mechanics-of-mafia": [
+    {
+      "question": "A small startup tells a candidate that its work is exciting, its people are brilliant, and its stock options could be valuable. What is missing from this pitch in Thiel's view?",
+      "answer": "Those claims could come from many employers. The startup needs to explain the particular problem its team is committed to solving and why this candidate would want to tackle it with these people.",
+      "anchor": "recruiting-conspirators"
+    },
+    {
+      "question": "Two engineers both believe they are responsible for the same product decision. How would Thiel's approach to assigning responsibilities address this?",
+      "answer": "Give each engineer a clear area of responsibility and evaluate each on that area. This reduces competition for the same decisions and makes it easier to work together.",
+      "anchor": "do-one-thing"
+    }
+  ],
+  "11-if-you-build-it-will-they-come": [
+    {
+      "question": "A company spends $180 to acquire a customer and expects to earn $120 in net profit from that customer before acquisition costs. What does Thiel's comparison of CLV and CAC tell you?",
+      "answer": "The current channel costs $60 more per customer than the company expects to earn back. The company needs lower acquisition costs or more value per customer before it can grow sustainably through that channel.",
+      "anchor": "how-to-sell-a-product"
+    },
+    {
+      "question": "Why can a $1,000 inventory tool for small stores be hard to sell even if it solves a real problem?",
+      "answer": "Mass advertising reaches too many people who will never buy it and may not persuade store owners by itself. The deal is also too small to pay for a salesperson to visit each prospect.",
+      "anchor": "distribution-doldrums"
+    }
+  ],
+  "12-man-and-machine": [
+    {
+      "question": "A computer beats experts at calculation but struggles with a judgment that people make easily. Why does Thiel treat those two observations as a business opportunity?",
+      "answer": "They show that people and computers bring different strengths to a task. A system can handle large amounts of data while people make decisions that depend on context.",
+      "anchor": "technology-means-complementarity"
+    },
+    {
+      "question": "Why did PayPal find a combination of software and human analysts more useful for reviewing transactions than either approach on its own?",
+      "answer": "Software could screen far more transactions than people could inspect individually. Analysts then reviewed the flagged cases and could apply judgment when familiar patterns stopped being reliable.",
+      "anchor": "complementary-businesses"
+    }
+  ],
+  "13-seeing-green": [
+    {
+      "question": "A new turbine is 20% more efficient than existing models in a laboratory. Why might customers still decline to switch, according to Thiel?",
+      "answer": "The lab result may not translate into a large benefit after installation, operating costs, and the risks of new hardware. A buyer also needs enough evidence to trust that the advertised gain will materialize.",
+      "anchor": "the-engineering-question"
+    },
+    {
+      "question": "Better Place built battery-swapping stations for electric cars. How did the buying process undermine the value of that network for potential customers?",
+      "answer": "Customers had to show that they lived near a station, commit to predictable routes, and sign up for a subscription. Each requirement made the new system harder to adopt, even where the technology was available.",
+      "anchor": "the-distribution-question"
+    }
+  ],
+  "14-the-founders-paradox": [
+    {
+      "question": "How can an initially unusual founder come to seem more extreme over time, even if the public starts with some accurate observations?",
+      "answer": "An unusual trait draws attention, the founder may play it up, and observers may amplify it further. These reactions feed back into how the founder behaves and how others see them.",
+      "anchor": "the-difference-engine"
+    },
+    {
+      "question": "What benefit does Thiel see in a founder with strong personal authority, and what risk comes with that authority?",
+      "answer": "A founder can win commitment to a distinctive plan and sustain it for years. Public admiration can turn into hostility, and believing one's own legend can obscure the contributions of the people who make the plan work.",
+      "anchor": "the-return-of-the-king"
+    }
+  ]
+}

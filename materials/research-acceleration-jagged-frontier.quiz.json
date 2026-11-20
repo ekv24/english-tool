@@ -1,0 +1,27 @@
+[
+  {
+    "question": "Why can one researcher log more than one agent workday per calendar day?",
+    "answer": "An agent workday is eight hours of agent use. Several simultaneous agents can each contribute time, so their combined runtime can exceed a day.",
+    "anchor": "agent-workdays"
+  },
+  {
+    "question": "Why can a researcher's work be counted under infrastructure even if their formal team is posttraining?",
+    "answer": "The report classifies documented project contributions by the kind of research being done. It apportions each researcher-week across verified projects, independently of reporting lines.",
+    "anchor": "where-researchers-allocate-their-time"
+  },
+  {
+    "question": "Why can't an increase in zero-intervention success within one duration bucket be attributed entirely to better models?",
+    "answer": "Researchers may also have changed which tasks they delegate within the same duration bucket. The estimate mixes changes in agent capabilities with changes in task selection.",
+    "anchor": "tasks-delegated-to-models-and-success-rates"
+  },
+  {
+    "question": "What can the survey about giving up team resources tell us, and why is it different from a productivity measurement?",
+    "answer": "The trade-offs show how much respondents report valuing coding agents. They come from hypothetical self-reports and an ad-hoc sample, so they do not directly measure causal productivity gains.",
+    "anchor": "self-reported-value-of-coding-agents"
+  },
+  {
+    "question": "Why compare OpenAI ECI trends with caution when the underlying metric differs from Epoch's ECI?",
+    "answer": "OpenAI ECI combines public benchmarks with internal ones. Differences in benchmark composition can shift relative model scores and the estimated rate of progress.",
+    "anchor": "openai-eci"
+  }
+]

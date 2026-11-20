@@ -1,0 +1,362 @@
+{
+  "01-Introduction-To-Causality": [
+    {
+      "question": "A student used a tablet in class and scored 80 on the final exam. What would you need to know to calculate the tablet's causal effect for that student?",
+      "answer": "You would need the score that the same student would have earned under the same conditions without a tablet. That score is a counterfactual, so you can only observe one of the two scores.",
+      "anchor": "when-association-is-causation"
+    },
+    {
+      "question": "Schools that buy tablets score higher than schools that do not. If better-funded schools are more likely to buy tablets and would score higher without them, how does that affect the comparison?",
+      "answer": "The score gap includes an advantage that the tablet schools would have had without tablets. This positive selection bias can make the tablet effect look larger than it really is, even if the effect is zero or negative.",
+      "anchor": "bias"
+    }
+  ],
+  "02-Randomised-Experiments": [
+    {
+      "question": "Students who choose online classes often work longer hours. What problem does randomly assigning students to online and in-person classes address?",
+      "answer": "Random assignment makes the two groups comparable on average, including on hours worked and other factors that could affect scores. With students following their assignments, the difference in average scores estimates the effect of the class format.",
+      "anchor": "the-gold-standard"
+    },
+    {
+      "question": "Two schools randomise class format separately. One assigns 80% of students online and the other assigns 20% online. If expected scores also differ by school, how should you compare the formats?",
+      "answer": "Compare the formats within each school and combine the results using weights for the population you want to study. A pooled comparison without adjustment would put the two schools in different proportions in the online and in-person groups.",
+      "anchor": "the-assignment-mechanism"
+    }
+  ],
+  "03-Stats-Review-The-Most-Dangerous-Equation": [
+    {
+      "question": "One team increases its sample from 100 to 400 independent observations. If the spread of individual outcomes stays the same, what happens to the standard error of the mean?",
+      "answer": "It falls by about half because the standard error is the standard deviation divided by the square root of the sample size. The average becomes more precise even though individual outcomes vary just as much.",
+      "anchor": "the-standard-error-of-our-estimates"
+    },
+    {
+      "question": "An A/B test gives a two-sided p-value of 0.03 under a null hypothesis of no effect. What does the 0.03 describe?",
+      "answer": "If there were no effect and the test assumptions held, results at least as extreme as the observed result would occur about 3% of the time.",
+      "anchor": "p-values"
+    }
+  ],
+  "04-Graphical-Causal-Models": [
+    {
+      "question": "Preparation affects both whether a student signs up for tutoring and how well the student does on a test. Which path can bias the tutoring comparison, and how could you block it?",
+      "answer": "The backdoor path runs from tutoring back through preparation and then to the test score. Comparing students at the same level of preparation blocks that path.",
+      "anchor": "confounding-bias"
+    },
+    {
+      "question": "Either a strong portfolio or a strong interview can get someone hired. Among hired applicants, why might portfolios and interviews seem negatively related even if they are independent among all applicants?",
+      "answer": "Hiring is a common effect of the portfolio and the interview, so it is a collider. Looking only at hired applicants opens a path between the two, since a weaker portfolio often has to be offset by a stronger interview.",
+      "anchor": "selection-bias"
+    }
+  ],
+  "05-The-Unreasonable-Effectiveness-of-Linear-Regression": [
+    {
+      "question": "In an A/B test, treated customers spend 34 on average and controls spend 30. What intercept and treatment coefficient would you get by regressing spending on a 0/1 treatment indicator?",
+      "answer": "The intercept is 30, the mean when the indicator is zero. The treatment coefficient is 4, the extra amount needed to reach the treated mean of 34 when the indicator is one.",
+      "anchor": "all-you-need-is-regression"
+    },
+    {
+      "question": "Businesses in busier areas buy more ads and would make more sales at the same advertising level. In a simple regression of sales on ads, what happens if you leave out foot traffic?",
+      "answer": "The ad coefficient is biased upward in this setup. It picks up some of the sales advantage of busier areas because foot traffic raises sales and is positively related to ad spending.",
+      "anchor": "omitted-variable-or-confounding-bias"
+    }
+  ],
+  "06-Grouped-and-Dummy-Regression": [
+    {
+      "question": "A school report gives just the mean score and student count for each school. If individual scores have similar variance, what weight should each school mean receive in a weighted regression?",
+      "answer": "Use student count as the weight. Larger groups give more precise means under similar individual variance, and count weighting gives each student equal influence when the predictors are constant within each group.",
+      "anchor": "regression-with-grouped-data"
+    },
+    {
+      "question": "In a price experiment with three tested prices, the same price increase may have a different effect at different starting prices. How do price indicators let the regression represent this?",
+      "answer": "Use one price as the reference and add an indicator for each other price. Each indicator estimates a separate difference from the reference, so the fitted means can have unequal gaps.",
+      "anchor": "regression-for-dummies"
+    }
+  ],
+  "07-Beyond-Confounders": [
+    {
+      "question": "A randomly assigned reminder may raise attendance. Previous attendance, recorded before the trial, predicts future attendance. What can adding it to the regression accomplish?",
+      "answer": "Controlling for previous attendance can reduce unexplained variation in the outcome and improve the precision of the reminder estimate. Randomisation already makes the groups comparable on average.",
+      "anchor": "good-controls"
+    },
+    {
+      "question": "A sales email can cause customers to open the app, which can lead to a purchase. If you want the total effect of the email on purchases, what happens if you control for opening the app?",
+      "answer": "It blocks the part of the effect that passes through opening the app. The resulting comparison cannot capture the full effect of sending the email.",
+      "anchor": "bad-controls-selection-bias"
+    }
+  ],
+  "08-Instrumental-Variables": [
+    {
+      "question": "A lottery offer raises course attendance by 20 percentage points and pass rates by 6 percentage points. What is the Wald estimate of the effect of attending, assuming the offer is a valid instrument?",
+      "answer": "Divide the reduced-form difference in pass rates by the first-stage difference in attendance. The ratio is 0.06 divided by 0.20, or a 30-percentage-point increase in the pass rate.",
+      "anchor": "instrumental-variables-by-hand"
+    },
+    {
+      "question": "A second lottery changes attendance by only one percentage point. Why does such a small first stage make the instrumental-variables estimate hard to trust?",
+      "answer": "The estimate divides by a small change in treatment, so sampling noise can produce a large swing in the estimate. A weak first stage also makes the estimate more sensitive to small violations of the instrument assumptions.",
+      "anchor": "weakness-of-instruments"
+    }
+  ],
+  "09-Non-Compliance-and-LATE": [
+    {
+      "question": "A random invitation encourages people to join a course. Some would join anyway and others would never join. Under the LATE assumptions, whose effect does the instrumental-variables estimate describe?",
+      "answer": "It describes the average effect for compliers, the people who join when invited and skip the course without an invitation. Those are the people whose treatment changes because of the instrument.",
+      "anchor": "local-average-treatment-effect-late"
+    },
+    {
+      "question": "An app randomly assigns notifications, but only 40% of users assigned a notification receive it. Control users cannot receive it, and assignment raises purchases by 2 percentage points. How much does receiving the notification raise purchases among compliers under the LATE assumptions?",
+      "answer": "The estimated effect among compliers is 5 percentage points. Divide the 2-point difference in purchases by the 0.40 difference in receipt rates between the two assignment groups.",
+      "anchor": "effect-on-engagement"
+    }
+  ],
+  "10-Matching": [
+    {
+      "question": "A treated customer is matched to a control customer whose income is lower. Income predicts the outcome even without treatment. How can this difference bias the estimate?",
+      "answer": "The control customer's outcome approximates the treated customer's untreated outcome, but the income gap can affect the outcome on its own. A bias correction can use an outcome model to adjust for the difference between the matched customers' covariates.",
+      "anchor": "matching-bias"
+    },
+    {
+      "question": "Why might adding many matching variables with limited data make the comparison between treated and control units less credible?",
+      "answer": "As the number of matching variables rises, it becomes harder to find units with similar values on all of them. Nearest matches can be far apart, leaving larger covariate differences between the groups.",
+      "anchor": "the-curse-of-dimensionality"
+    }
+  ],
+  "11-Propensity-Score": [
+    {
+      "question": "Most high-risk customers receive a reminder, while few low-risk customers receive it. Why would inverse-propensity weighting for the ATE give extra weight to a high-risk customer who did not receive it?",
+      "answer": "A high-risk customer is unlikely to be in the control group, so the inverse of that control probability is large. The weight helps the control group represent high-risk customers who are underrepresented there.",
+      "anchor": "propensity-weighting"
+    },
+    {
+      "question": "Almost everyone in one customer segment receives treatment. What problem does that create when estimating an ATE by inverse-propensity weighting?",
+      "answer": "The few untreated customers in the segment get very large weights, so their outcomes can dominate the estimate and increase its variance. If everyone in the segment is treated, the data contain no untreated outcomes for that segment.",
+      "anchor": "common-issues-with-propensity-score"
+    }
+  ],
+  "12-Doubly-Robust-Estimation": [
+    {
+      "question": "You use a doubly robust estimator and model treatment assignment correctly, but your outcome model misses a nonlinear relationship. Can the estimator still recover the ATE?",
+      "answer": "Yes, if the recorded covariates account for confounding and both treatments are possible at those covariate values. The correctly specified propensity model lets the weighted residual correction offset bias in the outcome model.",
+      "anchor": "id1"
+    },
+    {
+      "question": "Both the propensity model and outcome model miss important relationships. What does double robustness guarantee in this case?",
+      "answer": "Double robustness guarantees consistency when at least one of the models is correct, under the usual causal assumptions. With both models wrong, bias can remain.",
+      "anchor": "key-ideas"
+    }
+  ],
+  "13-Difference-in-Differences": [
+    {
+      "question": "In the treated city, weekly sales go from 100 to 118. In the control city, they go from 90 to 101. What is the difference-in-differences estimate?",
+      "answer": "The treated city's sales increased by 18 and the control city's by 11. The estimated effect is 7 extra sales per week if the treated city would otherwise have followed the same trend.",
+      "anchor": "did-estimator"
+    },
+    {
+      "question": "Sales in the treated city were already rising faster than in the control city before a campaign. Why is the control city's change a questionable estimate of what would have happened without the campaign?",
+      "answer": "The difference-in-differences comparison uses the control city's change as the untreated change for the treated city. If the earlier trend difference would have continued, part of the estimated campaign effect is that pre-existing difference in growth.",
+      "anchor": "non-parallel-trends"
+    }
+  ],
+  "14-Panel-Data-and-Fixed-Effects": [
+    {
+      "question": "Stores differ in location quality, which stays the same over time. A chain changes staffing levels across months. How can store fixed effects help estimate the effect of staffing on sales?",
+      "answer": "Store fixed effects let you estimate the staffing coefficient using changes within the same stores over time. Persistent location differences are absorbed into the store effects.",
+      "anchor": "fixed-effects"
+    },
+    {
+      "question": "All stores face a holiday surge, but stores in one district also face a temporary festival. Which shock can month fixed effects absorb?",
+      "answer": "Month fixed effects absorb the part of the holiday surge shared by all stores in that month. The district-specific festival can still confound the estimate if it also influences staffing.",
+      "anchor": "time-effects"
+    }
+  ],
+  "15-Synthetic-Control": [
+    {
+      "question": "A city's unemployment was higher than that of every donor city before a policy. Why can ordinary synthetic-control weights struggle to reproduce the treated city's pre-policy levels?",
+      "answer": "Nonnegative weights that sum to one keep the weighted average within the range of donor values at each date. When the treated city lies beyond that range, the weighted control cannot match it exactly.",
+      "anchor": "don-t-extrapolate"
+    },
+    {
+      "question": "Your estimated policy effect is a large post-policy gap between the treated city and its synthetic control. How could you check whether gaps of that size also occur in cities that had no policy?",
+      "answer": "Pretend each donor city was treated at the same date and rebuild its synthetic control from the other eligible cities. Compare those placebo gaps with the treated city's gap, taking the quality of the pre-policy fits into account.",
+      "anchor": "making-inference"
+    }
+  ],
+  "16-Regression-Discontinuity-Design": [
+    {
+      "question": "Crossing a test threshold raises the chance of receiving a certificate by 50 percentage points and raises average earnings by 1,000. What effect does a fuzzy regression-discontinuity design estimate here?",
+      "answer": "The estimated effect is 1,000 divided by 0.50, or 2,000. Under the design assumptions, this is a local effect for people near the cutoff whose certificate status changes because they cross it.",
+      "anchor": "sheepskin-effect-and-fuzzy-rdd"
+    },
+    {
+      "question": "Reported income values pile up just below the eligibility cutoff for a subsidy. Why should that make you more cautious about a regression-discontinuity estimate?",
+      "answer": "Bunching is a warning that people may be able to sort themselves across the cutoff. If those just below and above it differ in ways that affect the outcome, the jump can reflect selection as well as the subsidy.",
+      "anchor": "the-mccrary-test"
+    }
+  ],
+  "17-Predictive-Models-101": [
+    {
+      "question": "A flexible model predicts its training customers' spending much better than a simple model does. What would you check before deciding which model to use with new customers?",
+      "answer": "Compare the models on observations they did not use for fitting, for example with cross-validation. The flexible model may be fitting noise, so a better training score can come with worse performance on new customers.",
+      "anchor": "cross-validation"
+    },
+    {
+      "question": "A model estimates each customer's expected profit, and a team contacts everyone whose estimate exceeds 10. Which part is the prediction, and which part is the policy?",
+      "answer": "The predicted profit is the numerical estimate for each customer. The policy is the decision rule that translates that estimate into whether the team contacts the customer.",
+      "anchor": "predictions-and-policies"
+    }
+  ],
+  "18-Heterogeneous-Treatment-Effects-and-Personalization": [
+    {
+      "question": "An offer increases sign-ups by 8 percentage points for new customers but reduces them by 2 points for returning customers. What does the CATE tell you that the overall ATE cannot?",
+      "answer": "The CATE describes the average effect for each customer group. It shows which groups respond differently, which matters when deciding whom to send the offer to.",
+      "anchor": "from-ate-to-cate"
+    },
+    {
+      "question": "A price model forecasts more ice cream sales on a hot day than on a cool one. What should you compare to find out which day is more sensitive to price?",
+      "answer": "Compare how much predicted sales change for a given price change on each kind of day. The level of sales and the size of the response to a price change are different quantities.",
+      "anchor": "predicting-sensitivity"
+    }
+  ],
+  "19-Evaluating-Causal-Models": [
+    {
+      "question": "A model ranks users by how much they should benefit from a reminder. How can a held-out randomised experiment tell you whether the top quarter benefits more than the bottom quarter?",
+      "answer": "Use the model to divide the held-out users by score, then estimate the reminder effect within each quarter by comparing its treated and control users. The group estimates let you check whether the observed average effects follow the model's ranking.",
+      "anchor": "sensitivity-by-model-band"
+    },
+    {
+      "question": "Your budget lets you treat only 20% of users. How would you compare two models that rank users by predicted treatment effect?",
+      "answer": "Compare their cumulative gain at the 20% mark on a held-out randomised sample. This measures how much improvement each ranking would deliver by treating its top 20%.",
+      "anchor": "cumulative-gain-curve"
+    }
+  ],
+  "20-Plug-and-Play-Estimators": [
+    {
+      "question": "In a 50/50 experiment, you multiply each treated outcome by 2 and each control outcome by −2. What does the average of this transformed target estimate within a customer segment?",
+      "answer": "The average estimates the segment's conditional average treatment effect. The treated and control observations each occur with probability one-half, which cancels their weights and leaves the difference in mean outcomes.",
+      "anchor": "target-transformation"
+    },
+    {
+      "question": "Raising a monthly fee from 5 to 10 cuts demand sharply, while raising it from 20 to 25 barely changes demand. What does a single linear slope for price miss?",
+      "answer": "It compresses responses at different starting prices into one slope. The size of the price effect depends on where you are on the demand curve.",
+      "anchor": "non-linear-treatment-effects"
+    }
+  ],
+  "21-Meta-Learners": [
+    {
+      "question": "In an S-learner, treatment is a weak predictor of the outcome. If regularisation makes the model ignore it, what effect will the learner estimate?",
+      "answer": "It will estimate zero because setting treatment to one or zero gives the same prediction. Even when treatment is retained, regularisation can pull the estimated effect toward zero.",
+      "anchor": "s-learner-aka-the-go-horse-learner"
+    },
+    {
+      "question": "Only 5% of a sample is treated. What extra step does the X-learner use after fitting one outcome model per group, and why can this help?",
+      "answer": "It imputes an effect for each observation using its observed outcome and the opposite group's outcome prediction. It then models those imputed effects in both groups and combines the estimates using the propensity score, which can give greater influence to the estimate that relies on the outcome model fitted to the larger group.",
+      "anchor": "x-learner"
+    }
+  ],
+  "22-Debiased-Orthogonal-Machine-Learning": [
+    {
+      "question": "Weather affects both price and sales in nonlinear ways. Which two nuisance models would you fit to estimate a constant price effect using double machine learning?",
+      "answer": "Fit one model for expected price given the covariates and another for expected sales given the same covariates. Then regress sales residuals on price residuals to estimate the price effect.",
+      "anchor": "frisch-waugh-lovell-on-steroids"
+    },
+    {
+      "question": "A highly flexible treatment model fits the training sample almost perfectly. Why should you construct each observation's treatment and outcome residuals using predictions from models trained on other folds?",
+      "answer": "Out-of-fold predictions keep the nuisance models from using each observation to predict itself, which reduces the influence of overfitting on the treatment effect estimate. A model that memorises the training treatments can leave almost no variation in the in-sample treatment residuals.",
+      "anchor": "frisch-waugh-lovell-on-steroids"
+    }
+  ],
+  "23-Challenges-with-Effect-Heterogeneity-and-Nonlinearity": [
+    {
+      "question": "A voucher raises two groups' log-odds of buying by the same amount. One group starts at a purchase probability of 50% and the other at 98%. Which group gets a bigger boost in percentage points?",
+      "answer": "The group starting at 50% gets a larger increase in purchase probability. The logistic curve is steeper near 50% and flattens toward 100%, leaving the group at 98% little room to grow.",
+      "anchor": "simulating-some-data"
+    },
+    {
+      "question": "Segment A responds more strongly to a discount at a high starting price, while segment B responds more at a low starting price. What does this mean for a single ranking by price sensitivity?",
+      "answer": "The ranking depends on the starting price and the size of the price change. It helps to compare the segments at the price change you actually plan to make.",
+      "anchor": "continuous-treatment-and-non-linearity"
+    }
+  ],
+  "24-The-Diff-in-Diff-Saga": [
+    {
+      "question": "A feature rolls out to one group of cities before another, and the feature's effect keeps growing after launch. Why can a standard two-way fixed-effects estimate be biased?",
+      "answer": "The regression can use already-treated cities as controls for cities that adopt later. When the early cities' treatment effects keep changing, their observed trend is a poor estimate of the later cities' untreated trend.",
+      "anchor": "treatment-effect-heterogeneity-in-time"
+    },
+    {
+      "question": "You want an event study that allows the effect to evolve differently for cities that adopt in different months. What extra flexibility does the chapter introduce?",
+      "answer": "Estimate separate effects by both adoption cohort and time, so that cohorts can follow different treatment-effect paths. A causal interpretation still depends on credible assumptions about the untreated trends.",
+      "anchor": "enlightenment-a-flexible-functional-form"
+    }
+  ],
+  "25-Synthetic-Diff-in-Diff": [
+    {
+      "question": "In synthetic difference-in-differences, what are the unit weights and the pre-treatment time weights each trying to match?",
+      "answer": "Unit weights build a comparison group that tracks the treated group's pre-treatment path, allowing a level difference. Pre-treatment time weights choose a weighted mix of earlier periods that resembles the control units' average post-treatment outcomes up to a common level shift.",
+      "anchor": "synthetic-diff-in-diff"
+    },
+    {
+      "question": "Two adoption cohorts yield synthetic difference-in-differences estimates of 2 and 8. They contribute 10 and 30 treated unit-period observations respectively. What is the combined effect using the chapter's weighting?",
+      "answer": "The weights are one-quarter and three-quarters because they are based on the number of treated unit-period observations in each cohort. The combined effect is 6.5.",
+      "anchor": "time-effect-heterogeneity-and-staggered-adoption"
+    }
+  ],
+  "Debiasing-with-Orthogonalization": [
+    {
+      "question": "Using the same covariates throughout, you first remove their linear effect from both price and sales, then regress the residuals on each other. How does this slope relate to the price coefficient in a full linear regression?",
+      "answer": "The Frisch–Waugh–Lovell theorem gives the same price coefficient in both regressions. The residual approach shows how the coefficient uses variation in price and sales after accounting for the included covariates.",
+      "anchor": "linear-regression-reborn"
+    },
+    {
+      "question": "You remove the influence of recorded weather and day of week from price and sales. Local events also influence both but are absent from the data. Can a flexible model for the recorded covariates deal with that confounding?",
+      "answer": "The residual associations can still reflect local events. Orthogonalisation addresses the covariates available to the model, and causal identification requires accounting for all relevant confounding.",
+      "anchor": "the-intuition-behind-orthogonalization"
+    }
+  ],
+  "Debiasing-with-Propensity-Score": [
+    {
+      "question": "An experiment logs each user's assignment probability. Which weights would you use for a treated user assigned with probability 0.2 and an untreated user assigned with that same probability of receiving treatment?",
+      "answer": "The treated user receives weight 1 divided by 0.2, which is 5. The untreated user receives weight 1 divided by 0.8, which is 1.25.",
+      "anchor": "stored-propensity-score"
+    },
+    {
+      "question": "Every enterprise customer receives treatment and every small-business customer is in the control group. Why can't propensity weighting recover an effect separately for each segment from these data?",
+      "answer": "Each segment lacks observations in one treatment arm, so the positivity assumption fails. Reweighting can change the influence of existing observations, but it cannot supply the missing comparison.",
+      "anchor": "positivity-or-common-support"
+    }
+  ],
+  "When-Prediction-Fails": [
+    {
+      "question": "A model identifies customers likely to buy when offered a coupon. What would you need to compare before deciding whether giving those customers a coupon increases net value?",
+      "answer": "Compare expected net value with the coupon to expected net value without it, including the discount cost. A likely buyer may have bought at full price anyway, in which case the coupon could reduce net value.",
+      "anchor": "hammering-your-thumb-with-predictions"
+    },
+    {
+      "question": "Under what condition could a ranking by predicted outcomes serve as a useful ranking for a treatment decision?",
+      "answer": "It could work if the outcome predictions order people in the same way as their expected treatment effects, or reliably in the reverse order if you reverse the ranking. That relationship depends on how the treatment changes the outcome.",
+      "anchor": "when-might-prediction-helps"
+    }
+  ],
+  "Prediction-Metrics-For-Causal-Models": [
+    {
+      "question": "A model predicts nearly all variation in sales from store size and predicts the same sales at every price. Why could it have a high predictive score and still be poor for pricing decisions?",
+      "answer": "Store size may explain most of the observed differences in sales, which gives the model a high score for outcome prediction. With no response to price, it gives no meaningful estimate of how a price change would affect sales.",
+      "anchor": "simulating-data"
+    },
+    {
+      "question": "You have randomised prices, and store size strongly predicts sales. Under the appendix's additive model, how could you adjust the outcome before comparing the predictive scores of two models for the price effect?",
+      "answer": "Use out-of-fold predictions from a model of sales based on the covariates alone, then subtract those predictions from observed sales. Compare performance on the residual sales, which depends on how well the first model removed baseline sales differences.",
+      "anchor": "predictive-metric-for-causal-inference"
+    }
+  ],
+  "Conformal-Inference-for-Synthetic-Control": [
+    {
+      "question": "To test a proposed effect for a synthetic-control study, why does the chapter permute the residuals in blocks?",
+      "answer": "Block permutations preserve much of the time ordering while moving which residuals fall in the post-treatment window. Comparing the original test statistic with the permuted values shows how unusual the observed post-treatment residuals are under the proposed effect.",
+      "anchor": "p-value"
+    },
+    {
+      "question": "You test a range of candidate treatment effects for the first post-intervention period. Which candidates belong in the 95% confidence set built by inverting those tests?",
+      "answer": "Keep the candidate effects that a test at the 5% level does not reject. Those retained values approximate the confidence set at the resolution of your search grid.",
+      "anchor": "confidence-intervals"
+    }
+  ]
+}

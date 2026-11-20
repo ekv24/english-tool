@@ -12,7 +12,7 @@
   text-decoration: none;
   overflow-wrap: anywhere;
 }
-.book-library-card:hover { border-color: #d9bdad; background: #f3ede4; }
+.book-library-card:hover { border-color: var(--accent-line); background: var(--hover); }
 .book-library-card .library-image { object-fit: contain; aspect-ratio: 1; }
 .book-library-copy { flex: 1; min-width: 0; }
 .book-library-meta, .book-eyebrow {
@@ -109,10 +109,10 @@
 }
 .book-trail button:hover, .book-contents-header button:hover {
   background: var(--sidebar);
-  border-color: #d8d4c8;
+  border-color: var(--line-strong);
 }
-.book-actions .book-primary { color: #fff; background: var(--ink); border-color: var(--ink); }
-.book-actions .book-primary:hover { background: #393631; border-color: #393631; }
+.book-actions .book-primary { color: var(--on-ink); background: var(--ink); border-color: var(--ink); }
+.book-actions .book-primary:hover { background: var(--ink-hover); border-color: var(--ink-hover); }
 
 .book-overview > h2 {
   margin: clamp(30px, 5vw, 60px) 0 14px;
@@ -191,7 +191,7 @@ a.book-entry, .book-entry > a {
 .book-reader .contents-label { margin-block-start: 9px; }
 #article.book-article > section > h1,
 #article.book-article section > :is(p, ul, ol, blockquote, dl, h2, h3, h4) {
-  max-width: 760px;
+  max-width: var(--measure);
   margin-inline: auto;
 }
 #article.book-article > section > h1,
@@ -226,7 +226,7 @@ a.book-entry, .book-entry > a {
   overflow-wrap: anywhere;
   text-decoration: none;
 }
-.book-chapter-nav a:hover { border-color: #d9bdad; background: #fcf8f3; }
+.book-chapter-nav a:hover { border-color: var(--accent-line); background: var(--hover); }
 .book-chapter-nav :is(small, .book-nav-label) { color: var(--muted); font: 550 12px/1.4 var(--sans); }
 .book-chapter-nav a[rel="next"] { grid-column: 2; text-align: right; }
 
@@ -241,9 +241,9 @@ a.book-entry, .book-entry > a {
   border-radius: 16px;
   background: var(--paper);
   color: var(--ink);
-  box-shadow: 0 18px 70px #14141329;
+  box-shadow: var(--shadow-dialog);
 }
-:is(.book-contents, .book-figure-dialog)::backdrop { background: #14141356; }
+:is(.book-contents, .book-figure-dialog)::backdrop { background: var(--backdrop); }
 .book-contents-header {
   position: sticky;
   top: 0;
@@ -301,12 +301,12 @@ a.book-entry, .book-entry > a {
 
 #article.book-article pre { tab-size: 4; font-size: clamp(12px, 1.65vw, 14px); }
 #article.book-article .cell_output .highlight pre { background: var(--panel); }
-.book-article .highlight :is(.c, .c1, .ch, .cm, .cp, .cs) { color: #686347; font-style: italic; }
-.book-article .highlight :is(.k, .kc, .kd, .kn, .kp, .kr, .kt, .ow) { color: #7c3d75; font-weight: 600; }
-.book-article .highlight :is(.s, .s1, .s2, .sa, .sb, .sc, .sd, .se, .sh, .si, .sr, .ss, .sx) { color: #386244; }
-.book-article .highlight :is(.m, .mb, .mf, .mh, .mi, .mo) { color: #94512d; }
-.book-article .highlight :is(.nb, .nc, .nf, .nn) { color: #245c80; }
-.book-article .highlight :is(.err, .gr, .gt) { color: #9f322b; }
+.book-article .highlight :is(.c, .c1, .ch, .cm, .cp, .cs) { color: var(--hl-comment); font-style: italic; }
+.book-article .highlight :is(.k, .kc, .kd, .kn, .kp, .kr, .kt, .ow) { color: var(--hl-keyword); font-weight: 600; }
+.book-article .highlight :is(.s, .s1, .s2, .sa, .sb, .sc, .sd, .se, .sh, .si, .sr, .ss, .sx) { color: var(--hl-string); }
+.book-article .highlight :is(.m, .mb, .mf, .mh, .mi, .mo) { color: var(--hl-number); }
+.book-article .highlight :is(.nb, .nc, .nf, .nn) { color: var(--hl-name); }
+.book-article .highlight :is(.err, .gr, .gt) { color: var(--hl-error); }
 
 .book-article :is(div.math, .MathJax_Display, mjx-container[display="true"]) {
   max-width: 100%;
@@ -343,19 +343,19 @@ a.book-entry, .book-entry > a {
   padding: clamp(8px, 1.8vw, 18px);
   border: 1px solid var(--line);
   border-radius: 8px;
-  background: var(--panel);
+  background: var(--figure-surface);
 }
 #article.book-article :is(figcaption, .caption, .caption-text) {
   color: var(--muted);
   font: 13px/1.6 var(--sans);
 }
-#article.book-article .book-figure {
+#article .book-figure {
   width: fit-content;
   max-width: 100%;
   margin: clamp(18px, 3vw, 28px) auto;
 }
 #article.book-article .cell_output > .book-figure { margin-block: 8px 0; }
-#article.book-article .book-figure-zoom {
+#article .book-figure-zoom {
   position: relative;
   display: block;
   max-width: 100%;
@@ -363,10 +363,10 @@ a.book-entry, .book-entry > a {
   padding-block-end: 30px;
   border: 1px solid var(--line);
   border-radius: 8px;
-  background: var(--panel);
+  background: var(--figure-surface);
   cursor: zoom-in;
 }
-#article.book-article .book-figure-zoom:hover { border-color: #ba9a88; }
+#article .book-figure-zoom:hover { border-color: var(--accent-line-strong); }
 .book-figure-zoom::before, .book-figure-zoom::after {
   position: absolute;
   display: block;
@@ -389,8 +389,9 @@ a.book-entry, .book-entry > a {
   background: var(--muted);
   transform: rotate(45deg);
 }
-#article.book-article .book-figure-zoom img {
+#article .book-figure-zoom img {
   width: auto;
+  max-width: 100%;
   height: auto;
   border: 0;
   border-radius: 4px;
@@ -442,7 +443,7 @@ a.book-entry, .book-entry > a {
 .book-figure-view {
   height: calc(100% - 38px);
   padding: clamp(6px, 1vw, 12px);
-  background: var(--panel);
+  background: var(--figure-surface);
 }
 .book-figure-view:focus-visible { outline-offset: -3px; }
 .book-figure-view img {
@@ -471,10 +472,10 @@ a.book-entry, .book-entry > a {
 }
 .book-article .admonition {
   padding: 13px 16px;
-  border: 1px solid #e8d8ca;
-  border-inline-start: 3px solid #c2886e;
+  border: 1px solid var(--note-line);
+  border-inline-start: 3px solid var(--quote-line);
   border-radius: 8px;
-  background: #f8efe7;
+  background: var(--note-bg);
 }
 #article.book-article .admonition-title { margin: 0 0 .45em; font: 600 14px/1.5 var(--sans); }
 #article.book-article .admonition > :last-child { margin-bottom: 0; }
@@ -482,7 +483,7 @@ a.book-entry, .book-entry > a {
   width: fit-content;
   max-width: 100%;
   margin: 0 0 10px;
-  margin-inline-start: max(0px, calc((100% - 760px) / 2));
+  margin-inline-start: max(0px, calc((100% - var(--measure)) / 2));
   padding: 0;
   border: 1px solid var(--line);
   background: var(--panel);
@@ -531,7 +532,7 @@ a.book-entry, .book-entry > a {
   border-radius: 8px;
   background: var(--panel);
   color: var(--ink);
-  box-shadow: 0 2px 12px #14141318;
+  box-shadow: var(--shadow-pop);
   font: 550 13px/1.3 var(--sans);
 }
 .quiz-return:hover { background: var(--sidebar); }

@@ -1,5 +1,5 @@
 import { escape } from './html.mjs';
-import { libraryDirectory, libraryIds, originalSource, readOptional } from './library.mjs';
+import { libraryDirectory, libraryIds, originalSource, readMetadata } from './library.mjs';
 
 /** @param {string} id */
 export function bookPath(id) {
@@ -8,12 +8,15 @@ export function bookPath(id) {
 
 /** @typedef {{slug:string,title:string,number?:string,original:string,type:'intro'|'chapter'|'appendix'}} BookPage */
 /** @typedef {{title:string,entries:({slug:string}|{title:string,href:string})[]}} BookPart */
-/** @typedef {{id:string,title:string,author:string,source?:string,math?:boolean,glossaryLanguage?:string,cover?:string,description?:string,copyright?:string,items:BookPage[],toc:BookPart[]}} Book */
+/**
+ * @typedef {{id:string,title:string,author:string,source?:string,math?:boolean,glossaryLanguage?:string,cover?:string,
+ *   description?:string,copyright?:string,start?:string,startLabel?:string,license?:string,licenseName?:string,
+ *   items:BookPage[],toc:BookPart[]}} Book
+ */
 
 /** @param {string} id @param {URL} directory @returns {Promise<Book|null>} */
 export async function loadBook(id, directory) {
-  const raw = await readOptional(new URL('manifest.json', directory));
-  const book = /** @type {Book|null} */ (raw ? JSON.parse(raw) : null);
+  const book = /** @type {Book|null} */ (await readMetadata(new URL('manifest.json', directory), id));
   return book?.id === id && book.items.length &&
     book.items.every(item => /^[a-z0-9-]+$/.test(item.slug)) ? book : null;
 }
@@ -27,14 +30,14 @@ export async function loadBooks() {
   return entries.filter(book => book !== null);
 }
 
-/** @param {Book} book */
-export function libraryBook(book) {
+/** @param {Book} book @param {boolean} [eager] */
+export function libraryBook(book, eager = false) {
   const count = book.items.filter(item => item.type === 'chapter').length;
   const path = bookPath(book.id);
   const start = book.items.find(item => item.type === 'chapter') ?? book.items[0];
   return '<section class="library-books" aria-label="' + escape(book.title) + '" data-book="' + escape(book.id) + '">' +
     '<a class="book-library-card" href="' + path + '" data-book-summary>' +
-    libraryImage(path + '/images/', book.cover) +
+    libraryImage(path + '/images/', book.cover, eager) +
     '<div class="book-library-copy">' +
     '<p class="book-library-meta">Book · ' + count + ' chapters</p><h2 class="book-library-title">' + escape(book.title) + '</h2>' +
     '<p class="book-library-description">' + escape(book.author) + '</p></div>' +
@@ -44,10 +47,13 @@ export function libraryBook(book) {
     '<div data-book-pages hidden>' + book.items.map(item => bookPageData(item)).join('') + '</div></section>';
 }
 
-/** @param {string} base @param {string} [file] */
-export function libraryImage(base, file) {
+export const libraryThumbnail = 'library-v1';
+
+/** @param {string} base @param {string} [file] @param {boolean} [eager] */
+export function libraryImage(base, file, eager = false) {
   if (!file || !/^[\w.-]+\.(?:png|jpe?g|webp|avif)$/i.test(file)) return '';
-  return '<img class="library-image" src="' + escape(base + file) + '" alt="" decoding="async">';
+  return '<img class="library-image" src="' + escape(base + file) + '?thumbnail=' + libraryThumbnail +
+    '" alt="" decoding="async"' + (eager ? '' : ' loading="lazy"') + '>';
 }
 
 /** @param {BookPage} item */
@@ -58,17 +64,23 @@ function bookPageData(item) {
 /** @param {Book} book */
 export function bookOverview(book) {
   const path = bookPath(book.id);
-  const start = book.items[0];
+  const start = book.items.find(item => item.slug === book.start) ?? book.items[0];
   const description = book.description;
   return '<main class="reading-column book-overview" data-book="' + escape(book.id) + '"><header class="book-hero">' +
     '<p class="book-eyebrow">Book · ' + escape(book.author) + '</p><h1>' + escape(book.title) + '</h1>' +
     (description ? '<p class="book-description">' + escape(description) + '</p>' : '') +
     '<div class="book-actions"><a class="book-primary" data-book-resume href="' + path + '/' + escape(start.slug) + '">' +
-    'Start reading</a>' +
+    escape(start.slug === book.start && book.startLabel ? book.startLabel : 'Start reading') + '</a>' +
     '<span data-resume-title></span><span data-book-status aria-live="polite"></span></div></header>' +
     '<h2 id="book-toc-heading">Contents</h2>' + bookSearch('overview-search') + bookContents(book) +
     '<footer class="book-credit">By ' + escape(book.author) +
-    (book.copyright ? ' · ' + escape(book.copyright) : '') + '</footer></main>';
+    (bookLicense(book) ? ' · <a href="' + path + '/license">' + escape(book.licenseName ?? 'License') + '</a>'
+      : book.copyright ? ' · ' + escape(book.copyright) : '') + '</footer></main>';
+}
+
+/** Returns the license file named by the manifest, if it is a plain file name. @param {Book} book */
+export function bookLicense(book) {
+  return book.license && /^[\w-]+(?:\.[\w-]+)*$/.test(book.license) ? book.license : '';
 }
 
 /** @param {Book} book @param {BookPage} [current] */
@@ -132,6 +144,12 @@ export function chapterNav(book, item) {
 
 /** @param {Book} book @param {BookPage} item */
 export function originalUrl(book, item) {
-  const source = originalSource(book.source, bookPath(book.id) + '/original.pdf');
-  return source ? originalSource((book.source ?? '') + item.original, bookPath(book.id) + '/original.pdf') : '';
+  const local = bookPath(book.id) + '/' + bookOriginal(book);
+  const source = originalSource(book.source, local);
+  return source ? originalSource((book.source ?? '') + item.original, local) : '';
+}
+
+/** Names the local original file that the manifest's source points to. @param {Book} book */
+export function bookOriginal(book) {
+  return book.source === bookPath(book.id) + '/original.epub' ? 'original.epub' : 'original.pdf';
 }

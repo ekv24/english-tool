@@ -1,0 +1,32 @@
+[
+  {
+    "question": "A team mostly makes small fixes to an existing codebase. How does the FrontierCode comparison support trying Sol for this work?",
+    "answer": "FrontierCode checks whether changes to real repositories meet maintainers’ standards. At maximum reasoning effort, Sol trails Astra by only 0.5 points and costs about one-fifth as much on that evaluation.",
+    "anchor": "gpt-62-sol-our-go-to-model-for-everyday-work"
+  },
+  {
+    "question": "A model writes a convincing legal deliverable that satisfies most requirements but introduces one consequential factual error. How would it fare on the Harvey headline measure?",
+    "answer": "It would receive no credit under that measure. Every grading criterion must be met and the deliverable must contain no material hallucinations.",
+    "anchor": "harvey-lab-aa"
+  },
+  {
+    "question": "Why does the position of the sensitivity table matter in the financial forecast example?",
+    "answer": "Putting it beside the revenue mix and the enterprise-to-share-value bridge helps readers connect the assumptions they vary with the businesses and calculations that drive the per-share valuation.",
+    "anchor": "workbook-and-memo-examples:financial-forecast:tab-panel"
+  },
+  {
+    "question": "Why do AA-3D judges compare two examples from the same prompt without seeing which model built each one?",
+    "answer": "The shared prompt makes the design brief comparable. Hiding the model names reduces the effect of brand expectations on which experience the judges prefer.",
+    "anchor": "computer-use-and-interactive-web-design"
+  },
+  {
+    "question": "If an agent spends less time and money on a task, what other behavior should a team still check when the task encounters an obstacle?",
+    "answer": "Check whether the agent reports that something blocked its work, such as a missing file or unavailable search tool. The article says these omissions increased on two alignment evaluations.",
+    "anchor": "alignment"
+  },
+  {
+    "question": "Your application adds instructions after each exchange. How should it assemble the next request if it wants to reuse the prompt cache?",
+    "answer": "Keep the previously processed prefix unchanged and append the new instructions. The stable prefix can be reused from cache, which can reduce latency and cost.",
+    "anchor": "pricing-and-availability"
+  }
+]

@@ -1,0 +1,23 @@
+{
+  "deep-work-is-valuable": [
+    {"question": "Why might a thirty-second email check slow you down even after you reopen a difficult paper?", "answer": "Part of your attention can stay with the message, especially if it raises an unfinished task. You return to the paper before you have fully returned to its argument.", "anchor": "page-43"}
+  ],
+  "deep-work-is-rare": [
+    {"question": "Why might a team reward quick replies even when they interrupt its most valuable work?", "answer": "Replies are easy to see. When a team's real output is hard to measure, visible activity can become the evidence people use to judge who is productive.", "anchor": "page-64"}
+  ],
+  "deep-work-is-meaningful": [
+    {"question": "How could a demanding afternoon at work be more absorbing than a free afternoon?", "answer": "A clear goal, feedback and a challenge that stretches your skills can draw your attention into an activity. An unstructured afternoon may offer fewer conditions for flow.", "anchor": "page-84"}
+  ],
+  "work-deeply": [
+    {"question": "A writer wants to publish two articles. What could she track each week while both are still unfinished, and why?", "answer": "She could track hours spent writing with full attention. She can change that behavior this week, while a publication count only records a result that arrives later.", "anchor": "page-138"}
+  ],
+  "embrace-boredom": [
+    {"question": "Why keep a scheduled offline interval even when you feel bored and have time to check your messages?", "answer": "Waiting gives you practice resisting the impulse to switch. If boredom always triggers a check, you keep practicing the habit you want to change.", "anchor": "page-162"}
+  ],
+  "quit-social-media": [
+    {"question": "A website occasionally helps you find a good article. What else would you need to know to decide whether to use it regularly?", "answer": "Identify the activities that contribute most to your goals. Consider how the site helps or disrupts those activities and whether its benefits outweigh the costs.", "anchor": "a001"}
+  ],
+  "drain-the-shallows": [
+    {"question": "An unexpected problem takes up an hour you had planned for writing. What should you do with the rest of your schedule, and why?", "answer": "Redraw the remaining blocks to reflect the time and priorities you now have. The schedule helps you choose how to spend your time and can change as you learn more.", "anchor": "a001"}
+  ]
+}

@@ -10,11 +10,14 @@
     "check": "tsc --noEmit",
     "test": "node --test test/*.test.mjs",
     "test:browser": "node --test test/*.browser.mjs",
-    "prepare:model": "node translation.mjs --download-model"
+    "prepare:articles": "node scripts/prepare-article.mjs effective-harnesses && node scripts/prepare-article.mjs harness-design",
+    "prepare:model": "node translation.mjs --download-model",
+    "prepare:book": "node scripts/prepare-book.mjs"
   },
   "dependencies": {
     "@huggingface/transformers": "4.3.2",
     "parse5": "8.0.0",
+    "sharp": "0.35.5",
     "wink-eng-lite-web-model": "1.8.1",
     "wink-nlp": "2.4.0"
   },

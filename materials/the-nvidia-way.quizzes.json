@@ -1,0 +1,37 @@
+{
+  "03-the-birth-of-nvidia": [
+    {
+      "question": "Why could Nvidia's founders see the PC market as a better opportunity than the graphics workstation market?",
+      "answer": "PCs gave the team a path to a much larger market for graphics. A chip that made graphics practical on ordinary PCs could reach many more users than a product limited to specialist workstations.",
+      "anchor": "page_37"
+    }
+  ],
+  "04-all-in": [
+    {
+      "question": "Why might a chip startup accept a shorter payroll runway in exchange for speeding up its prototype?",
+      "answer": "A working prototype gives the company a chance to test the design and gives potential investors evidence that the product works. That chance can be worth the higher immediate cost when the company is already running out of time.",
+      "anchor": "page_68"
+    }
+  ],
+  "05-ultra-aggressive": [
+    {
+      "question": "How did outsourcing chip fabrication change what Nvidia needed to build itself?",
+      "answer": "Nvidia could concentrate its resources on designing chips and rely on an existing specialist foundry to manufacture them, avoiding the investment needed to build and operate a fabrication plant.",
+      "anchor": "page_87"
+    }
+  ],
+  "08-the-era-of-the-gpu": [
+    {
+      "question": "Why is it hard to attract both users and developers to a new computing platform at the beginning?",
+      "answer": "Users need useful software to justify adopting the platform. Developers want a large enough installed base to justify writing that software. Without either group, attracting the other is harder.",
+      "anchor": "page_141"
+    }
+  ],
+  "11-the-road-to-ai": [
+    {
+      "question": "Why invest in the software ecosystem early when the company already sells the chips researchers need?",
+      "answer": "Researchers still need software that makes the chips practical for their work. Building that software early makes it easier to adopt the hardware as new AI uses emerge.",
+      "anchor": "page_200"
+    }
+  ]
+}

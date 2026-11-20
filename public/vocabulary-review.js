@@ -25,26 +25,27 @@ export function initReview(list) {
   const start = /** @type {HTMLButtonElement} */ (launch.querySelector('[data-review-start]'));
   const summary = /** @type {HTMLElement} */ (launch.querySelector('[data-review-summary]'));
   const heading = /** @type {HTMLElement} */ (panel.querySelector('[data-review-heading]'));
-  const prompt = /** @type {HTMLElement} */ (panel.querySelector('[data-review-prompt]'));
+  const summaryLine = /** @type {HTMLElement} */ (panel.querySelector('[data-review-summary-line]'));
   const progress = /** @type {HTMLElement} */ (panel.querySelector('[data-review-progress]'));
-  const meter = /** @type {HTMLElement} */ (panel.querySelector('.review-meter span'));
+  const position = /** @type {HTMLElement} */ (progress.querySelector('span'));
+  const meter = /** @type {HTMLProgressElement} */ (progress.querySelector('progress'));
   const example = /** @type {HTMLElement} */ (panel.querySelector('[data-review-example]'));
-  const feedback = /** @type {HTMLElement} */ (panel.querySelector('[data-review-feedback]'));
   const translation = /** @type {HTMLElement} */ (panel.querySelector('[data-review-translation]'));
   const source = /** @type {HTMLAnchorElement} */ (panel.querySelector('[data-review-source]'));
   const status = /** @type {HTMLElement} */ (panel.querySelector('[data-review-status]'));
   const exit = /** @type {HTMLButtonElement} */ (panel.querySelector('[data-review-exit]'));
+  const actions = /** @type {HTMLElement} */ (panel.querySelector('[data-review-tools]'));
   const hint = /** @type {HTMLButtonElement} */ (panel.querySelector('[data-review-hint]'));
   const reveal = /** @type {HTMLButtonElement} */ (panel.querySelector('[data-review-reveal]'));
   const again = /** @type {HTMLButtonElement} */ (panel.querySelector('[data-review-again]'));
   const remembered = /** @type {HTMLButtonElement} */ (panel.querySelector('[data-review-remembered]'));
   const more = /** @type {HTMLButtonElement} */ (panel.querySelector('[data-review-more]'));
+  const exclude = /** @type {HTMLButtonElement} */ (panel.querySelector('[data-review-exclude]'));
 
   let opened = false;
   let shown = '';
   let revealed = false;
   let hinted = false;
-  let latestSession = '';
 
   /** @param {ReviewAction} action */
   function push(action) {
@@ -74,69 +75,87 @@ export function initReview(list) {
     const session = current();
     const card = session?.queue[session.step];
     const available = snapshot?.available ?? 0;
-    const synced = readerSyncStatus === 'synced';
+    const offline = readerSyncStatus === 'unavailable';
+    const waiting = pending && offline ? 'Saved on this device. Waiting to sync.' : '';
     const hasExpressions = Boolean(list.querySelector('li'));
-    launch.hidden = !hasExpressions && !card && !pending;
+    launch.hidden = !hasExpressions && !available && !card && !pending;
     home.hidden = opened;
     panel.hidden = !opened;
     start.hidden = !card && !available && !pending;
     start.textContent = card ? 'Continue review' : session ? 'Review more' : 'Start review';
     start.disabled = pending !== null && !card;
-    if (error && !opened) summary.textContent = error;
-    else if (pending && !opened) summary.textContent = synced ? 'Saving your review…' : 'Review saved on this device. Waiting to sync.';
-    else if (card && session) summary.textContent = (session.total - session.step) + ' left in this session';
-    else if (available) summary.textContent = available + (available === 1 ? ' expression ready' : ' expressions ready');
-    else if (snapshot?.nextDue) summary.textContent = 'Next review ' +
-      new Intl.DateTimeFormat('en', { month: 'short', day: 'numeric' }).format(snapshot.nextDue);
-    else if (!snapshot) summary.textContent = readerSyncStatus === 'unavailable' ? 'Review is unavailable while offline.' : 'Checking for expressions…';
-    else summary.textContent = 'Add an expression below to start reviewing it.';
+    if (!opened) {
+      let copy;
+      if (error || waiting) copy = error || waiting;
+      else if (card && session) copy = (session.total - session.step) + ' left';
+      else if (available) copy = available + (available === 1 ? ' expression ready' : ' expressions ready');
+      else if (snapshot?.nextDue) copy = 'Next review ' +
+        new Intl.DateTimeFormat('en', { month: 'short', day: 'numeric' }).format(snapshot.nextDue);
+      else if (!snapshot) copy = offline ? 'Review unavailable offline' : 'Checking for review…';
+      else copy = 'No expressions ready';
+      if (summary.textContent !== copy) summary.textContent = copy;
+    }
 
     for (const button of list.querySelectorAll('[data-review-preference]')) {
       if (!(button instanceof HTMLButtonElement)) continue;
       const preference = snapshot?.entries[button.dataset.reviewPreference ?? ''];
       const included = preference?.preference === 'include' ||
         (preference?.preference !== 'exclude' && (preference?.suggested || Boolean(preference?.dueAt)));
-      button.textContent = included ? 'Remove from review' : 'Add to review';
+      button.textContent = included ? 'Exclude from review' : 'Add to review';
+      button.value = included ? 'exclude' : 'include';
       button.disabled = pending !== null;
       button.hidden = !preference;
     }
 
     if (!opened) return;
-    const next = session ? session.id + ':' + session.step : '';
+    const starting = pending?.type === 'start' && !card;
+    const finished = Boolean(session && !card && !starting);
+    const next = starting ? 'starting' : session ? session.id + ':' + session.step : '';
     const changed = shown !== next;
     if (changed) {
       shown = next;
       revealed = false;
       hinted = false;
     }
-    const starting = pending?.type === 'start' && !card;
-    const finished = Boolean(session && !card && !starting);
-    heading.textContent = card?.lemma ?? (finished ? 'Review complete' : 'Review');
-    heading.lang = 'en';
-    progress.textContent = session && !starting ? card
-      ? (session.step + 1) + ' / ' + session.total : session.total + ' / ' + session.total : '';
-    meter.style.width = session?.total && !starting ? (100 * (session.step + Number(!!card)) / session.total) + '%' : '0%';
-    prompt.textContent = card ? revealed ? 'Did you remember this meaning?' :
-      'Recall the meaning before revealing the answer.' : starting ? 'Preparing your review…' :
-      finished && session?.total ? 'You reviewed ' + session.total + (session.total === 1 ? ' expression.' : ' expressions.') :
-      'Choose expressions in Vocabulary to start a review.';
+    panel.classList.toggle('has-review-card', Boolean(card));
+    heading.textContent = card?.lemma ?? (starting ? 'Starting review…' :
+      finished ? 'Review complete' : 'Review unavailable');
+    progress.hidden = !card;
+    if (card && session) {
+      const number = session.step + 1;
+      position.textContent = number + ' / ' + session.total;
+      meter.max = session.total;
+      meter.value = number;
+      meter.setAttribute('aria-valuetext', 'Card ' + number + ' of ' + session.total);
+    }
+    summaryLine.hidden = !finished || !session?.total;
+    summaryLine.textContent = session?.total ?
+      session.total + (session.total === 1 ? ' expression reviewed' : ' expressions reviewed') : '';
     example.textContent = card?.expression.sentence ?? '';
     example.hidden = !(card?.expression.sentence && (card.showContext || hinted || revealed));
-    feedback.hidden = !card || !revealed;
+    translation.hidden = !card || !revealed;
     translation.textContent = card?.expression.translation ?? '';
-    source.textContent = card?.expression.title ?? '';
+    source.hidden = translation.hidden;
     source.href = card?.expression.href ?? '/vocabulary';
+    source.setAttribute('aria-label', card?.expression.title ? 'Source passage in ' + card.expression.title : 'Source passage');
+    actions.hidden = !card;
     hint.hidden = !example.hidden || !example.textContent || revealed;
+    exclude.disabled = pending !== null;
+    exclude.textContent = pending?.type === 'preference' && pending.key === card?.sourceKey ?
+      'Excluding…' : 'Exclude from review';
     reveal.hidden = !card || revealed;
     again.hidden = !card || !revealed;
     remembered.hidden = again.hidden;
     more.hidden = !finished || !available;
-    more.disabled = !!pending;
-    again.disabled = !!pending;
-    remembered.disabled = !!pending;
-    status.textContent = error || (!pending ? '' : synced ? 'Saving your review…' : 'Saved on this device. Waiting to sync.');
-    if (!wasOpen || changed || latestSession !== (session?.id ?? '')) heading.focus({ preventScroll: true });
-    latestSession = session?.id ?? '';
+    more.disabled = pending !== null;
+    again.disabled = pending !== null;
+    remembered.disabled = pending !== null;
+    const statusText = error || waiting;
+    if (status.textContent !== statusText) status.textContent = statusText;
+    if (!wasOpen || changed) {
+      heading.focus({ preventScroll: true });
+      heading.scrollIntoView({ block: 'nearest' });
+    }
   }
 
   start.addEventListener('click', () => {
@@ -165,13 +184,12 @@ export function initReview(list) {
   hint.addEventListener('click', () => {
     hinted = true;
     render();
-    reveal.focus();
+    example.focus({ preventScroll: true });
   });
   reveal.addEventListener('click', () => {
     revealed = true;
     render();
-    if (!pending) remembered.focus();
-    else heading.focus();
+    translation.focus({ preventScroll: true });
   });
   /** @param {'again'|'remembered'} grade */
   function answer(grade) {
@@ -181,11 +199,16 @@ export function initReview(list) {
   }
   again.addEventListener('click', () => answer('again'));
   remembered.addEventListener('click', () => answer('remembered'));
+  exclude.addEventListener('click', () => {
+    const session = current();
+    const card = session?.queue[session.step];
+    if (card) push({ type: 'preference', key: card.sourceKey, preference: 'exclude' });
+  });
   list.addEventListener('click', event => {
     if (!(event.target instanceof HTMLButtonElement)) return;
     const key = event.target.dataset.reviewPreference;
-    if (!key) return;
-    push({ type: 'preference', key, preference: event.target.textContent === 'Add to review' ? 'include' : 'exclude' });
+    const preference = event.target.value;
+    if (key && (preference === 'include' || preference === 'exclude')) push({ type: 'preference', key, preference });
   });
   registerVocabularyReview(() => pending ?? true);
   window.addEventListener('vocabularyreviewchange', event => {

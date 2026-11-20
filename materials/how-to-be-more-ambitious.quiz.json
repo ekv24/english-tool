@@ -1,0 +1,27 @@
+[
+  {
+    "question": "If your quarterly review exists to catch problems early, how could you raise the altitude of a request to update its slides?",
+    "answer": "Ask the model to design a process that flags problems in time for leaders to act. Check when it would have flagged problems in past quarters, then run it alongside the existing review for a quarter.",
+    "anchor": "altitude"
+  },
+  {
+    "question": "Your team thinks users leave because onboarding is confusing. What would a deeper investigation ask the model to do?",
+    "answer": "Have it analyze raw usage logs with statistical tools and check whether the evidence supports the onboarding explanation. Ask it to look for an earlier sign of churn and check whether that signal predicts departures in data it set aside.",
+    "anchor": "depth"
+  },
+  {
+    "question": "If a model claims it made a website much faster, how would you apply the author's advice about checking its work?",
+    "answer": "Give the model a performance test that measures load time directly. Run the same test before and after the change and compare the results against the target.",
+    "anchor": "depth"
+  },
+  {
+    "question": "How might you restate the task of making a quarterly review deck to bring in a journalist's methods?",
+    "answer": "Describe what the review should help leaders do, such as understand why revenue fell and decide how to respond. Ask the model to verify the central claim against its sources and explain the evidence clearly enough to support a decision.",
+    "anchor": "range"
+  },
+  {
+    "question": "How does the author's story about George Dantzig illustrate the role of expectations in taking on a difficult task?",
+    "answer": "Dantzig thought the unsolved problems were homework, so he treated them as problems he could solve and attempted both. The author uses the story to show how a belief about what is possible can affect which tasks people are willing to try.",
+    "anchor": "we-have-been-here-before"
+  }
+]

@@ -1,0 +1,23 @@
+{
+  "id": "death-bereavement-and-creativity",
+  "title": "Death, Bereavement, and Creativity",
+  "source": "https://doi.org/10.1287/mnsc.2017.2850",
+  "sourceFile": "https://gwern.net/doc/culture/2017-graddy.pdf",
+  "format": "pdf",
+  "publisher": "Management Science",
+  "kind": "Article",
+  "author": "Kathryn Graddy and Carl Lieberman",
+  "date": "October 16, 2017",
+  "edition": "Articles in Advance, pp. 1–10, published online October 16, 2017. The journal issue version is Management Science 64(10), 4505–4514 (October 2018).",
+  "sha256": "0ae4422153caee58f47c9f0ae1d681419e23eefc1091ece459cbee6691b42579",
+  "license": "© 2017 INFORMS. The supplied PDF states personal use only, all rights reserved.",
+  "previewMedia": "preview.png",
+  "previewOrigin": "Figure 1, page 5, framed on paper for the library card.",
+  "figureMethods": {
+    "figure-1": "Page 5. Same clipped PDF vectors and glyph paths in both versions, with a paint-only change in the reader.",
+    "figure-2": "Page 6. Same clipped PDF vectors and glyph paths in both versions, with a paint-only change in the reader.",
+    "figure-3": "Page 7. Same clipped PDF vectors and glyph paths in both versions, with a paint-only change in the reader.",
+    "figure-4": "Page 8. Same clipped PDF vectors and glyph paths in both versions, with a paint-only change in the reader."
+  },
+  "equation": "Equation (1) rejoined from pages 4–5 and transcribed as selectable MathML. The original PDF preserves the two-page layout."
+}

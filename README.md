@@ -1,6 +1,6 @@
 # English Tool
 
-English Tool is a self-hosted web reader for learning vocabulary from English articles and books at any level. Click a word or select a phrase to look it up in place. Save useful expressions with their original sentences, review them later, and return to the passage they came from. The library keeps your reading position and completion status, and optional quizzes let you check your understanding of a text.
+English Tool is a self-hosted web reader for learning vocabulary from English articles and books at any level. Click a word or select a phrase to look it up in place. Save useful expressions with their original sentences, review them later, and return to the passage they came from. The library keeps your reading position and completion status, and optional quizzes let you check your understanding of a text. Progress, saved expressions and review sessions sync between the browsers and devices that open the same server, and the reader has a warm light theme and a dark theme.
 
 ![English Tool library with the bundled book and article](docs/screenshots/library.png)
 
@@ -25,6 +25,16 @@ Click a word or select a phrase to open a lookup next to the text. The screensho
 
 ![The sample article with the lookup for tickets open, showing the Russian translation and a Save expression button](docs/screenshots/word-lookup.png)
 
+## Review saved expressions
+
+Open **Vocabulary** and choose **Start review** to practise up to five saved expressions at a time. The reader suggests technical terms from glossaries and expressions that recur across your library first. Use **Add to review** or **Exclude from review** on a saved expression to override the suggestion. Recall the meaning, choose **Show answer**, then **Remembered** or **Again**. Remembered expressions come back after a growing interval, and forgotten ones come back the next day. **Show context** shows the sentence you saved the expression from, and **Source passage** opens it in the text.
+
+## Read on several devices
+
+The server keeps reading positions, completion marks, saved expressions and the review session in one SQLite database. Each browser keeps a copy and sends its changes when it opens a page or regains a connection, so you can stop reading on a laptop and continue on a phone, or finish a review that you started on another device. Answers given offline wait in the browser until the connection returns.
+
+The button in the top bar switches between the light and dark themes. Without a saved choice, the reader follows the system setting.
+
 ## Choose a lookup language
 
 The reading text and interface are in English. Set `ENGLISH_TOOL_TARGET_LANGUAGE` to a BCP 47 language tag such as `en`, `es`, or `pt-BR` to choose one lookup language for the server. The default is `en`. A glossary supplies short definitions or translations for its material in the selected language. When a selection has no glossary entry, a configured model can look it up.
@@ -48,13 +58,30 @@ npm run prepare:model
 npm start
 ```
 
-Set `ENGLISH_TOOL_OPUS_REVISION` to pin a specific checkpoint revision. The default is `main`. Model preparation downloads the files for local inference. For English definitions, use the glossary or Ollama. When both providers are configured, the reader uses OPUS-MT for selections and prefers Ollama for surrounding sentences.
+Set `ENGLISH_TOOL_OPUS_REVISION` to pin a specific checkpoint revision. The default is `main`. Model preparation downloads the files for local inference. For English definitions, use the glossary or Ollama. When both providers are configured, the reader uses OPUS-MT for selections and prefers Ollama for surrounding sentences. If Ollama does not answer within 8 seconds, OPUS-MT translates the sentence instead.
+
+**TranslateGemma** gives better sentence translations than OPUS-MT for many languages. Install a TranslateGemma model in Ollama and set its name, for example `ENGLISH_TOOL_OLLAMA_MODEL=translategemma:4b`. The reader then uses the prompt format the model was trained with and passes the glossary terms that occur in the sentence, so the translation keeps the glossary's terminology. The earlier setting name `ENGLISH_TOOL_SENTENCE_MODEL` is still accepted.
+
+The reader remembers recent lookups and loads OPUS-MT when the server starts, so the first lookup does not wait for the model. Set `ENGLISH_TOOL_WARM_MODELS=0` to load it on first use instead. While a page is open, the reader also asks Ollama to keep its model loaded.
 
 ## Self-hosting and data
 
 The server listens on `127.0.0.1:4173`. Set `PORT` to use a different local port. Each running instance is for one reader. It shares one SQLite database across browsers and has no built-in login. For access from other devices, use a private tunnel or an authenticated HTTPS reverse proxy that restricts access to that reader. Keep the reader's port off the public internet.
 
+`scripts/private-reader-proxy.mjs` is a small HTTP Basic authentication proxy for that setup. It listens on `127.0.0.1:4174`, reads its password from `.local/reader-password`, and forwards requests to the reader on port 4173. Put a TLS-terminating tunnel or proxy in front of it.
+
 By default, personal data lives in `.local/`. You can place it outside the checkout by setting `ENGLISH_TOOL_DATA_DIR` to an absolute directory path. The database is `reader-state/reader.sqlite` within that data directory. Set `ENGLISH_TOOL_STATE_DB` for a separate database path or `ENGLISH_TOOL_EXAMPLES=0` to hide the bundled examples. Back up the data directory and any separately configured database to keep imported files, vocabulary, and progress.
+
+Russian notes on the author's own setup, with the preparation steps for the materials in `materials/`, are in [docs/self-hosting.ru.md](docs/self-hosting.ru.md).
+
+## Repository layout
+
+- `server.mjs`, `library.mjs`, `book.mjs` and `translation.mjs` serve the reader. `assets.mjs` versions the files in `public/`, so browsers can cache them.
+- `reader-state.mjs`, `vocabulary-review.mjs` and `vocabulary-terms.mjs` keep the synced state and choose the expressions to review.
+- `examples/` holds the bundled demo materials.
+- `materials/` holds glossaries, quizzes and metadata for the author's own library. See [companion files](docs/materials.md#companion-files-in-the-repository).
+- `scripts/` holds the importers used to prepare those materials. They write to `.local/`.
+- `docs/specs/`, `docs/research/` and `.scratch/` hold the original requirements, research notes and work items, in Russian.
 
 ## Checks
 
@@ -63,9 +90,11 @@ npm run check
 npm test
 ```
 
-To run the browser tests, install Chromium through Playwright first.
+`npm test` also contains tests for the author's own library. They need prepared books, articles and the OPUS-MT model in `.local/`, and are skipped with the missing path as the reason when that data is absent.
+
+To run the browser tests, install Chromium and WebKit through Playwright first.
 
 ```sh
-npx playwright-core install chromium
+npx playwright-core install chromium webkit
 npm run test:browser
 ```

@@ -1,6 +1,6 @@
 import { loadPosition, savePosition, setRead } from './progress.js';
-import { offerSave, resetSave } from './vocabulary.js';
-import { syncReaderState } from './sync.js';
+import { expressionKey } from './reader-records.js';
+import { stateValue, storeState, syncReaderState } from './sync.js';
 
 const article = /** @type {HTMLElement} */ (document.getElementById('article'));
 const lookup = /** @type {HTMLElement} */ (document.getElementById('lookup'));
@@ -33,7 +33,7 @@ function sectionAnchor(heading) {
     ? heading.parentElement.id : heading.id;
 }
 const titleHeading = article.querySelector('h1');
-const sectionHeadings = [...article.querySelectorAll(isBook ? 'h1,h2,section[id] > h3' : 'h1,h2')]
+const sectionHeadings = [...article.querySelectorAll('h1,h2,section[id] > h3')]
   .filter(heading => heading !== titleHeading);
 for (const heading of sectionHeadings) {
   const link = document.createElement('a');
@@ -43,6 +43,13 @@ for (const heading of sectionHeadings) {
   contents?.append(link);
 }
 const quiz = document.querySelector('#quiz > summary');
+const readingStatus = document.getElementById('reading-status');
+if (readingStatus && contents) {
+  const link = document.createElement('a');
+  link.href = '#reading-status';
+  link.textContent = 'Reading status';
+  contents.append(link);
+}
 if (quiz && isBook) {
   const link = document.createElement('a');
   link.href = '#quiz';
@@ -147,15 +154,33 @@ window.addEventListener('scroll', () => {
 window.addEventListener('pagehide', saveReadingPosition, { capture: true });
 document.addEventListener('visibilitychange', () => { if (document.hidden) saveReadingPosition(); }, { capture: true });
 
-const readingButton = document.querySelector('button[data-mark-read]');
-if (readingButton instanceof HTMLButtonElement) {
+const readingButton = readingStatus?.querySelector('button[data-mark-read]');
+const readingButtonLabel = readingButton?.querySelector('[data-mark-read-label]');
+const readingStatusLabel = readingStatus?.querySelector('.reading-status-label');
+if (readingButton instanceof HTMLButtonElement && readingButtonLabel && readingStatusLabel) {
   const button = readingButton;
+  const label = readingButtonLabel;
+  const status = readingStatusLabel;
   const update = () => {
-    button.textContent = loadPosition(documentId)?.read ? 'Mark as unread' : 'Mark as read';
+    const read = loadPosition(documentId)?.read === true;
+    if (button.dataset.read === String(read)) return;
+    button.dataset.read = String(read);
+    label.textContent = read ? 'Mark as unread' : 'Mark as read';
+    status.textContent = read ? 'Finished' : '';
   };
   button.addEventListener('click', () => {
     saveReadingPosition();
-    if (setRead(documentId, !loadPosition(documentId)?.read)) update();
+    const read = !loadPosition(documentId)?.read;
+    if (!setRead(documentId, read)) {
+      status.textContent = 'Couldn’t save. Try again.';
+      return;
+    }
+    update();
+    const check = button.querySelector('path');
+    check?.getAnimations().forEach(animation => animation.cancel());
+    if (read && !matchMedia('(prefers-reduced-motion: reduce)').matches) {
+      check?.animate([{ strokeDashoffset: 12 }, { strokeDashoffset: 0 }], { duration: 220, easing: 'ease-out' });
+    }
   });
   window.addEventListener('readerstatechange', update);
   window.addEventListener('pageshow', update);
@@ -171,6 +196,66 @@ let selectionRange;
 let selection;
 /** @type {Map<string,{text:string,source:string}>} */
 const translations = new Map();
+
+const save = document.querySelector('button[data-save-expression]');
+/** @type {import('./reader-records.js').Expression | null} */
+let saveSelection = null;
+
+/** @param {string} href */
+function passageHref(href) {
+  try {
+    const url = new URL(href, location.origin);
+    const passage = /^\/(?:read\/[a-z0-9-]+|books\/[a-z0-9-]+\/[\w-]+)$/;
+    return url.origin === location.origin && passage.test(url.pathname) && url.hash
+      ? url.pathname + url.hash
+      : null;
+  } catch { return null; }
+}
+
+/** @param {boolean} saved */
+function updateSave(saved) {
+  if (!save) return;
+  save.setAttribute('aria-disabled', String(saved));
+  save.textContent = saved ? 'Saved' : 'Save expression';
+}
+
+function resetSave() {
+  saveSelection = null;
+  if (!(save instanceof HTMLButtonElement)) return;
+  updateSave(false);
+  save.hidden = true;
+}
+
+/** @param {import('./reader-records.js').Expression} entry */
+function offerSave(entry) {
+  resetSave();
+  const href = passageHref(entry.href);
+  if (!(save instanceof HTMLButtonElement) || !href || !entry.text.trim() || !entry.translation.trim()) return;
+  saveSelection = { ...entry, href };
+  save.hidden = false;
+  refreshSave();
+}
+
+function refreshSave() {
+  if (!saveSelection) return;
+  updateSave(Boolean(stateValue(expressionKey(saveSelection))));
+}
+
+save?.addEventListener('click', () => {
+  if (!saveSelection || save.getAttribute('aria-disabled') === 'true') return;
+  try {
+    const key = expressionKey(saveSelection);
+    if (!stateValue(key)) {
+      const now = Date.now();
+      storeState(key, { ...saveSelection, savedAt: now }, now);
+    }
+    updateSave(true);
+  } catch {
+    save.textContent = 'Try saving again';
+  }
+});
+
+if (save) window.addEventListener('readerstatechange', refreshSave);
 
 /** @param {string} text @param {boolean} [withContext] */
 async function fetchLookup(text, withContext = false) {

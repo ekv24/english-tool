@@ -31,6 +31,8 @@ Put the body in `article.html`. The reader adds the article title from metadata.
 
 Place article media in `media/`. For example, use `/read/my-article/media/baseline.png` as an image's `src`. To show a thumbnail on the library card, set `"previewMedia": "baseline.png"` in the metadata. For a PDF you keep with the article, save it as `original.pdf` next to `article.html` and set `source` to `/read/my-article/original.pdf`. Use an empty `source` if an original is unavailable to readers.
 
+An article prepared from a PDF can keep its published `source`, such as a DOI link, and set `"format": "pdf"` instead. **Original** then opens the local `original.pdf`, at the page given by `"sourcePage"` if you set it. The reader looks for the PDF next to `article.html` and then in `.local/originals/my-article/`. In a PDF article, an image with `data-original="figure-1-original.png"` opens a comparison with `media/figure-1-original.png`. Set `"compareFigures": true` to get the same comparison in an article that is not a PDF.
+
 Open **Library** or go to `/read/my-article` on the running server.
 
 ## Book
@@ -80,7 +82,9 @@ Use `<h1>` for the chapter title, `<h2>` for sections, and `<h3>` for subsection
 </section>
 ```
 
-Store images under `images/` and link to them as `/books/my-book/images/baseline.png`. You can set `"cover": "cover.png"` to show `images/cover.png` on the library card. For a reader version of a figure, use `src="/books/my-book/figures/baseline.svg"` and `data-original="baseline.png"` on the image. Readers can click the figure to compare it with the original image in `images/`. For TeX, provide the MathJax v3 `tex-mml-chtml.js` bundle and its fonts under `mathjax/es5/`, mark the TeX containers with the class `math`, and set `"math": true` in the manifest.
+Store images under `images/` and link to them as `/books/my-book/images/baseline.png`. You can set `"cover": "cover.png"` to show `images/cover.png` on the library card. For a reader version of a figure, use `src="/books/my-book/figures/baseline.svg"` and `data-original="baseline.png"` on the image. Readers can click the figure to compare it with the original image in `images/`. For TeX, provide the MathJax v3 `tex-mml-chtml.js` bundle and its fonts under `mathjax/es5/`, mark the TeX containers with the class `math`, and set `"math": true` in the manifest. MathJax then loads on chapter and appendix pages, but not on pages of type `intro`.
+
+A few optional manifest fields change the book overview. `"start"` names the slug that **Start reading** opens, and `"startLabel"` replaces the button text for that page. `"license"` names a plain-text file next to the manifest, such as `LICENSE.txt`. The overview footer then links to it at `/books/my-book/license` with the text from `"licenseName"`. For an EPUB you keep with the book, set `source` to `/books/my-book/original.epub`. **Original** then downloads that file. As with PDFs, the reader looks for the file next to the manifest and then in `.local/originals/my-book/`.
 
 Open **Library** or go to `/books/my-book` on the running server.
 
@@ -126,3 +130,14 @@ For a book, use `quizzes.json` with an object whose keys are page slugs and whos
 ```
 
 Open the material in the reader to check section links, images, lookups, and quiz anchors against the original.
+
+## Companion files in the repository
+
+Text you prepare from someone else's work usually stays in the data directory. Glossaries, quizzes and metadata written for that text can be kept under version control in the repository's `materials/` folder instead, named after the material ID:
+
+- `my-article.glossary.json` or `my-book.glossary.json`: a glossary in the same format as `glossary.json`.
+- `my-article.quiz.json`: article questions.
+- `my-book.quizzes.json`: book questions by page slug.
+- `my-article.json` or `my-book.json`: default metadata fields. Fields in the prepared `metadata.json` or `manifest.json` take precedence.
+
+A file next to the material always wins over its companion in `materials/`. The companion glossaries in this repository are written in Russian, so the reader uses them only when `ENGLISH_TOOL_TARGET_LANGUAGE` is `ru`. The preparation scripts in `scripts/` read the same folder and write the prepared text to `.local/`.

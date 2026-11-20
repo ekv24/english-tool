@@ -6,6 +6,11 @@ const defaultData = fileURLToPath(new URL('./.local/', import.meta.url));
 const dataPath = resolve(process.env.ENGLISH_TOOL_DATA_DIR || defaultData);
 export const dataRoot = pathToFileURL(dataPath + (dataPath.endsWith(sep) ? '' : sep));
 const examplesRoot = new URL('./examples/', import.meta.url);
+// Companion files kept under version control: `<id>.json` metadata defaults,
+// `<id>.glossary.json`, `<id>.quiz.json` for articles and `<id>.quizzes.json` for books.
+const companionRoot = new URL('./materials/', import.meta.url);
+// The companion glossaries in this repository are written in Russian.
+const companionLanguage = 'ru';
 
 /** @param {'articles'|'books'} kind */
 function roots(kind) {
@@ -51,33 +56,87 @@ export async function libraryDirectory(kind, id) {
   return null;
 }
 
-/** @typedef {{id:string,title:string,date?:string,source?:string,publisher?:string,kind?:string,previewMedia?:string,glossaryLanguage?:string}} Material */
+/** @param {string} id @param {string} suffix */
+function companionFile(id, suffix) {
+  return new URL(id + suffix, companionRoot);
+}
+
+/**
+ * Reads prepared metadata and fills the fields it leaves out from `materials/<id>.json`.
+ * @param {URL} file @param {string} id @returns {Promise<Record<string, unknown>|null>}
+ */
+export async function readMetadata(file, id) {
+  const [raw, companion] = await Promise.all([readOptional(file), readOptional(companionFile(id, '.json'))]);
+  if (!raw) return null;
+  return { ...(companion ? JSON.parse(companion) : {}), ...JSON.parse(raw) };
+}
+
+/** @typedef {{id:string,title:string,date?:string,source?:string,publisher?:string,kind?:string,previewMedia?:string,glossaryLanguage?:string,format?:string,sourcePage?:number,compareFigures?:boolean}} Material */
 
 /** @param {URL} directory @param {string} id @returns {Promise<Material|null>} */
 export async function loadArticle(directory, id) {
-  const raw = await readOptional(new URL('metadata.json', directory));
-  const article = /** @type {Material|null} */ (raw ? JSON.parse(raw) : null);
+  const article = /** @type {Material|null} */ (await readMetadata(new URL('metadata.json', directory), id));
   return article?.id === id && typeof article.title === 'string' ? article : null;
 }
 
-/** @param {URL} directory @param {{glossaryLanguage?:string}} material @param {string} language */
+/**
+ * Finds a quiz next to the material or, failing that, in the companion folder.
+ * @param {URL} directory @param {string} id @param {'articles'|'books'} kind
+ */
+export async function readQuiz(directory, id, kind) {
+  const name = kind === 'articles' ? 'quiz.json' : 'quizzes.json';
+  return await readOptional(new URL(name, directory)) ??
+    await readOptional(companionFile(id, kind === 'articles' ? '.quiz.json' : '.quizzes.json'));
+}
+
+/**
+ * Finds a downloadable original next to the material or in `<data>/originals/<id>/`.
+ * @param {URL} directory @param {string} id @param {string} name
+ */
+export async function originalFile(directory, id, name) {
+  const local = new URL(name, directory);
+  return await isFile(local) ? local : new URL('originals/' + id + '/' + name, dataRoot);
+}
+
+/** @type {Map<string, {key:string, glossary:Promise<Map<string,[string,string]>>}>} */
+const glossaries = new Map();
+
+/** Reads a glossary once and again only after the file changes. @param {URL} file */
+async function readGlossary(file) {
+  const info = await stat(file).catch(() => null);
+  if (!info?.isFile()) return null;
+  const key = info.size + ':' + info.mtimeMs;
+  const cached = glossaries.get(file.href);
+  if (cached?.key === key) return cached.glossary;
+  const glossary = readFile(file, 'utf8').then(raw => {
+    const entries = /** @type {Record<string,[string,string]>} */ (JSON.parse(raw));
+    /** @type {Map<string,[string,string]>} */
+    const terms = new Map();
+    for (const [term, meaning] of Object.entries(entries)) {
+      if (Array.isArray(meaning) && meaning.length === 2 && meaning.every(part => typeof part === 'string')) {
+        terms.set(term, meaning);
+      }
+    }
+    return terms;
+  });
+  glossaries.set(file.href, { key, glossary });
+  glossary.catch(() => glossaries.delete(file.href));
+  return glossary;
+}
+
+/** @param {string|undefined} tagged @param {string} language */
+function sameLanguage(tagged, language) {
+  return !tagged || tagged.toLowerCase() === language.toLowerCase();
+}
+
+/** @param {URL} directory @param {{id?:string,glossaryLanguage?:string}} material @param {string} language */
 export async function loadGlossary(directory, material, language) {
   // Only match an explicitly tagged glossary to its own target. Untagged glossaries belong to the instance's target.
-  if (material.glossaryLanguage && material.glossaryLanguage.toLowerCase() !== language.toLowerCase()) {
-    return new Map();
-  }
-  const file = new URL('glossary.json', directory);
-  const raw = await readOptional(file);
-  if (!raw) return new Map();
-  const entries = /** @type {Record<string,[string,string]>} */ (JSON.parse(raw));
-  /** @type {Map<string,[string,string]>} */
-  const glossary = new Map();
-  for (const [term, meaning] of Object.entries(entries)) {
-    if (Array.isArray(meaning) && meaning.length === 2 && meaning.every(part => typeof part === 'string')) {
-      glossary.set(term, meaning);
-    }
-  }
-  return glossary;
+  const own = sameLanguage(material.glossaryLanguage, language) ? await readGlossary(new URL('glossary.json', directory)) : null;
+  if (own) return own;
+  const companion = material.id && companionLanguage === language.toLowerCase().split('-')[0]
+    ? await readGlossary(companionFile(material.id, '.glossary.json')) : null;
+  return companion ?? new Map();
 }
 
 /** @param {string|undefined} source @param {string} localOriginal */
