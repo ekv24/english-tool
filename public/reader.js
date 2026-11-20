@@ -1,6 +1,6 @@
 import { loadPosition, savePosition, setRead } from './progress.js';
 import { expressionKey } from './reader-records.js';
-import { stateValue, storeState, syncReaderState } from './sync.js';
+import { stateRecords, stateValue, storeState, syncReaderState } from './sync.js';
 
 const article = /** @type {HTMLElement} */ (document.getElementById('article'));
 const lookup = /** @type {HTMLElement} */ (document.getElementById('lookup'));
@@ -64,6 +64,11 @@ let restoring = Boolean(loadPosition(documentId)?.y || location.hash);
 let lastInteraction = 0;
 let lastSaved = 0;
 const initialHash = location.hash;
+// Opening a saved expression's passage from Vocabulary is a quick look, not a new reading position.
+const peeking = Boolean(initialHash) && (() => {
+  try { return new URL(document.referrer).origin === location.origin && new URL(document.referrer).pathname === '/vocabulary'; }
+  catch { return false; }
+})();
 const initialSync = syncReaderState();
 window.addEventListener('pageshow', async () => {
   await Promise.all([
@@ -122,7 +127,7 @@ function recordScroll() {
 
 function saveReadingPosition() {
   recordScroll();
-  if (restoring || lastSaved === lastInteraction) return;
+  if (peeking || restoring || lastSaved === lastInteraction) return;
   const y = scrollY;
   const block = blocks.find(element => element.getBoundingClientRect().bottom > marker) ?? blocks.at(-1);
   if (!block) return;
@@ -212,15 +217,77 @@ function passageHref(href) {
   } catch { return null; }
 }
 
+const editTranslation = /** @type {HTMLButtonElement|null} */ (document.getElementById('edit-translation'));
+const savedNote = /** @type {HTMLElement|null} */ (document.getElementById('saved-note'));
+
+/** @param {string} text */
+const normalized = text => text.normalize().trim().replace(/\s+/g, ' ').toLowerCase();
+
 /** @param {boolean} saved */
 function updateSave(saved) {
   if (!save) return;
   save.setAttribute('aria-disabled', String(saved));
   save.textContent = saved ? 'Saved' : 'Save expression';
+  if (editTranslation) editTranslation.hidden = saved || !saveSelection;
+  if (saved) stopEditing();
 }
+
+/** Shows translations already saved for the same expression, so the reader does not save a duplicate. */
+function updateSavedNote() {
+  if (!savedNote) return;
+  const text = saveSelection ? normalized(saveSelection.text) : '';
+  const current = saveSelection ? normalized(currentTranslation()) : '';
+  /** @type {string[]} */
+  let others = [];
+  try {
+    others = text ? stateRecords('vocabulary:').flatMap(([, , entry]) =>
+      entry && typeof entry === 'object' && 'savedAt' in entry && normalized(entry.text) === text &&
+      normalized(entry.translation) !== current ? [entry.translation] : []) : [];
+  } catch { /* The note is optional. */ }
+  savedNote.hidden = !others.length;
+  savedNote.textContent = others.length ? 'In your vocabulary: ' + [...new Set(others)].join('; ') : '';
+}
+
+function currentTranslation() {
+  return (result.textContent ?? '').trim().replace(/\s+/g, ' ');
+}
+
+function stopEditing() {
+  if (result.isContentEditable) {
+    result.contentEditable = 'false';
+    result.classList.remove('is-editing');
+    if (editTranslation) editTranslation.textContent = 'Edit';
+  }
+}
+
+editTranslation?.addEventListener('click', () => {
+  if (result.isContentEditable) {
+    stopEditing();
+    refreshSave();
+    return;
+  }
+  try { result.contentEditable = 'plaintext-only'; } catch { result.contentEditable = 'true'; }
+  result.classList.add('is-editing');
+  editTranslation.textContent = 'Done';
+  result.focus();
+  const range = document.createRange();
+  range.selectNodeContents(result);
+  window.getSelection()?.removeAllRanges();
+  window.getSelection()?.addRange(range);
+});
+result.addEventListener('keydown', event => {
+  if (event.key === 'Enter' && result.isContentEditable) {
+    event.preventDefault();
+    stopEditing();
+    refreshSave();
+  }
+});
+result.addEventListener('input', () => { if (saveSelection) { updateSave(false); updateSavedNote(); } });
 
 function resetSave() {
   saveSelection = null;
+  stopEditing();
+  if (savedNote) savedNote.hidden = true;
   if (!(save instanceof HTMLButtonElement)) return;
   updateSave(false);
   save.hidden = true;
@@ -238,11 +305,17 @@ function offerSave(entry) {
 
 function refreshSave() {
   if (!saveSelection) return;
+  const translation = currentTranslation();
+  if (translation) saveSelection = { ...saveSelection, translation };
   updateSave(Boolean(stateValue(expressionKey(saveSelection))));
+  updateSavedNote();
 }
 
 save?.addEventListener('click', () => {
   if (!saveSelection || save.getAttribute('aria-disabled') === 'true') return;
+  const translation = currentTranslation();
+  if (!translation) return;
+  saveSelection = { ...saveSelection, translation };
   try {
     const key = expressionKey(saveSelection);
     if (!stateValue(key)) {
@@ -250,6 +323,7 @@ save?.addEventListener('click', () => {
       storeState(key, { ...saveSelection, savedAt: now }, now);
     }
     updateSave(true);
+    updateSavedNote();
   } catch {
     save.textContent = 'Try saving again';
   }
@@ -403,6 +477,24 @@ window.addEventListener('pointerup', event => {
 document.addEventListener('pointerdown', event => {
   if (event.target instanceof Node && !lookup.contains(event.target)) closeLookup();
 });
+// iOS adjusts a selection with handles and long presses without sending pointerup,
+// so a settled selection that differs from the open lookup opens it again.
+let pointerHeld = false;
+article.addEventListener('pointerdown', () => { pointerHeld = true; });
+window.addEventListener('pointerup', () => { pointerHeld = false; });
+window.addEventListener('pointercancel', () => { pointerHeld = false; });
+let selectionTimer = 0;
+document.addEventListener('selectionchange', () => {
+  clearTimeout(selectionTimer);
+  selectionTimer = window.setTimeout(() => {
+    if (pointerHeld || result.isContentEditable) return;
+    const chosen = window.getSelection();
+    if (!chosen || chosen.isCollapsed || !chosen.rangeCount || !article.contains(chosen.anchorNode) || !article.contains(chosen.focusNode)) return;
+    const range = chosen.getRangeAt(0);
+    const text = range.toString().trim().replace(/\s+/g, ' ');
+    if (text && text !== selection?.text) openLookup(range);
+  }, 400);
+});
 window.addEventListener('resize', placeLookup);
 window.addEventListener('scroll', () => {
   if (!selectionRange) return;
@@ -425,6 +517,8 @@ explain.addEventListener('click', () => {
   if (!selection) return;
   context.hidden = !context.hidden;
   explain.setAttribute('aria-expanded', String(!context.hidden));
+  const glossary = source.textContent?.endsWith(' glossary');
+  explain.textContent = context.hidden ? (glossary ? 'In context' : 'Translate sentence') : (glossary ? 'Hide context' : 'Hide sentence');
   if (!context.hidden) {
     context.textContent = 'Loading…';
     void fetchLookup(selection.text, true);

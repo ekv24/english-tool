@@ -71,6 +71,7 @@
   --accent: #d97757;
   --ok: #9cc49f;
   --on-accent: #1f1e1d;
+  --tint-base: #363633;
   --figure-surface: #ece9e0;
   --shadow-rgb: 0 0 0;
   --shadow-strength: 3.5;
@@ -95,6 +96,7 @@
     --accent: #d97757;
     --ok: #9cc49f;
     --on-accent: #1f1e1d;
+    --tint-base: #363633;
     --figure-surface: #ece9e0;
     --shadow-rgb: 0 0 0;
     --shadow-strength: 3.5;
@@ -110,6 +112,7 @@
 /* Derived tokens: every palette only sets the base colors above. */
 :root {
   --line-strong: color-mix(in oklab, var(--line), var(--ink) 12%);
+  --tint: var(--tint-base, var(--sidebar));
   --hover: color-mix(in oklab, var(--sidebar), var(--accent) 6%);
   --accent-wash: color-mix(in oklab, var(--panel), var(--accent) 13%);
   --accent-wash-strong: color-mix(in oklab, var(--panel), var(--accent) 21%);

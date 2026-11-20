@@ -11,6 +11,22 @@ let snapshot = readCache(snapshotKey, null);
 let pending = readCache(pendingKey, null);
 let error = '';
 
+const gradesKey = 'vocabulary-review:grades';
+
+/** Grades given on this device, kept per session for the summary. @returns {{id:string, grades:Record<number,string>}} */
+function readGrades() {
+  return readCache(gradesKey, { id: '', grades: {} });
+}
+
+/** Puts the saved expression in the example sentence inside a highlight. @param {HTMLElement} target @param {string} sentence @param {string} text */
+function showExample(target, sentence, text) {
+  const at = text ? sentence.toLowerCase().indexOf(text.toLowerCase()) : -1;
+  if (at < 0) { target.textContent = sentence; return; }
+  const mark = document.createElement('mark');
+  mark.textContent = sentence.slice(at, at + text.length);
+  target.replaceChildren(sentence.slice(0, at), mark, sentence.slice(at + text.length));
+}
+
 /** @template T @param {string} key @param {T} fallback @returns {T} */
 function readCache(key, fallback) {
   try { return JSON.parse(localStorage.getItem(key) ?? 'null') ?? fallback; }
@@ -125,13 +141,22 @@ export function initReview(list) {
       const number = session.step + 1;
       position.textContent = number + ' / ' + session.total;
       meter.max = session.total;
-      meter.value = number;
+      meter.value = session.step;
       meter.setAttribute('aria-valuetext', 'Card ' + number + ' of ' + session.total);
     }
     summaryLine.hidden = !finished || !session?.total;
-    summaryLine.textContent = session?.total ?
-      session.total + (session.total === 1 ? ' expression reviewed' : ' expressions reviewed') : '';
-    example.textContent = card?.expression.sentence ?? '';
+    if (finished && session?.total) {
+      const local = readGrades();
+      const grades = local.id === session.id ? Object.values(local.grades) : [];
+      const again = grades.filter(grade => grade === 'again').length;
+      const parts = [session.total + (session.total === 1 ? ' expression reviewed' : ' expressions reviewed')];
+      if (grades.length) parts.push((grades.length - again) + ' remembered', again + ' again');
+      if (!available && snapshot?.nextDue) parts.push('next review ' +
+        new Intl.DateTimeFormat('en', { month: 'short', day: 'numeric' }).format(snapshot.nextDue));
+      else if (!available) parts.push('nothing else due today');
+      summaryLine.textContent = parts.join(' · ');
+    } else summaryLine.textContent = '';
+    showExample(example, card?.expression.sentence ?? '', card?.expression.text ?? '');
     example.hidden = !(card?.expression.sentence && (card.showContext || hinted || revealed));
     translation.hidden = !card || !revealed;
     translation.textContent = card?.expression.translation ?? '';
@@ -195,8 +220,29 @@ export function initReview(list) {
   function answer(grade) {
     const session = current();
     if (!session?.queue[session.step] || !revealed) return;
+    const local = readGrades();
+    const grades = local.id === session.id ? local.grades : {};
+    try { localStorage.setItem(gradesKey, JSON.stringify({ id: session.id, grades: { ...grades, [session.step]: grade } })); }
+    catch { /* The summary only loses its counts. */ }
     push({ type: 'answer', id: session.id, step: session.step, grade, answeredAt: Date.now() });
   }
+  // Space or Enter shows the answer; 1 and 2 grade it, like most flashcard apps.
+  document.addEventListener('keydown', event => {
+    if (panel.hidden || event.altKey || event.ctrlKey || event.metaKey) return;
+    if (event.target instanceof HTMLElement && event.target.closest('input, textarea, button, a, summary')) {
+      if (event.key === ' ' || event.key === 'Enter') return;
+    }
+    /** @param {HTMLButtonElement} button */
+    const press = button => {
+      if (button.hidden || button.disabled) return false;
+      event.preventDefault();
+      button.click();
+      return true;
+    };
+    if (event.key === ' ' || event.key === 'Enter') press(reveal);
+    else if (event.key === '1') press(again);
+    else if (event.key === '2') press(remembered);
+  });
   again.addEventListener('click', () => answer('again'));
   remembered.addEventListener('click', () => answer('remembered'));
   exclude.addEventListener('click', () => {

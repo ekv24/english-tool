@@ -123,8 +123,9 @@ function renderQuiz(questions, label) {
 const translationPopover =
   '<aside id="lookup"' + (hasLookupModel ? ' data-lookup-model' : '') + ' hidden aria-label="Translation"><div class="lookup-head"><strong id="expression" lang="en"></strong>' +
   '<button id="dismiss" type="button" aria-label="Close translation">×</button></div><div id="translation" role="status" lang="' + escape(targetLanguage) + '"></div>' +
-  '<small id="translation-source"></small><div id="context" hidden lang="' + escape(targetLanguage) + '"></div><div class="lookup-actions">' +
+  '<small id="translation-source"></small><p id="saved-note" hidden></p><div id="context" hidden lang="' + escape(targetLanguage) + '"></div><div class="lookup-actions">' +
   '<button id="explain" type="button" aria-controls="context" aria-expanded="false" hidden>In context</button>' +
+  '<button id="edit-translation" type="button" aria-label="Edit translation before saving" hidden>Edit</button>' +
   '<button type="button" data-save-expression hidden>Save expression</button></div></aside>';
 
 const readingButton = '<div class="reading-status" id="reading-status" tabindex="-1">' +
@@ -206,9 +207,9 @@ const server = createServer(async (req, res) => {
         '<p class="review-translation" data-review-translation lang="' + escape(targetLanguage) + '" tabindex="-1" hidden></p>' +
         '<blockquote data-review-example lang="en" tabindex="-1" hidden></blockquote>' +
         '</div><div class="review-controls">' +
-        '<button class="review-primary" data-review-reveal type="button" hidden>Show answer</button>' +
-        '<button class="review-secondary" data-review-again type="button" hidden>Again</button>' +
-        '<button class="review-primary" data-review-remembered type="button" hidden>Remembered</button>' +
+        '<button class="review-primary" data-review-reveal type="button" aria-keyshortcuts="Space" hidden>Show answer<kbd aria-hidden="true">Space</kbd></button>' +
+        '<button class="review-secondary" data-review-again type="button" aria-keyshortcuts="1" hidden>Again<kbd aria-hidden="true">1</kbd></button>' +
+        '<button class="review-primary" data-review-remembered type="button" aria-keyshortcuts="2" hidden>Remembered<kbd aria-hidden="true">2</kbd></button>' +
         '<button class="review-primary" data-review-more type="button" hidden>Review more</button>' +
         '</div><div class="review-tools" data-review-tools hidden>' +
         '<button class="review-quiet" data-review-hint type="button" hidden>Show context</button>' +
