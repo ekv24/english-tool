@@ -484,28 +484,101 @@ function closeLookup() {
   refining?.abort();
   const chosen = window.getSelection();
   if (chosen?.rangeCount && chosen.toString() === selectionRange?.toString()) chosen.removeAllRanges();
+  if (canHighlight) CSS.highlights.delete('lookup-selection');
   lookup.hidden = true;
   resetSave();
   selectionRange = undefined;
   selection = undefined;
 }
 
+const canHighlight = typeof Highlight === 'function' && Boolean(CSS.highlights);
+const extendBefore = /** @type {HTMLButtonElement} */ (document.getElementById('extend-before'));
+const extendAfter = /** @type {HTMLButtonElement} */ (document.getElementById('extend-after'));
+const lookupBlocks = 'p,h1,h2,h3,h4,li,figcaption,pre,td,th';
+/** Words of the looked-up sentence that the phrase can grow to, by their offsets in the block. */
+let neighbours = { before: /** @type {{index:number,segment:string}|undefined} */ (undefined), after: /** @type {{index:number,segment:string}|undefined} */ (undefined) };
+/** @type {Element|null|undefined} */
+let lookupBlock;
+let lastPointer = matchMedia('(pointer: coarse)').matches ? 'touch' : 'mouse';
+document.addEventListener('pointerdown', event => { lastPointer = event.pointerType; }, { capture: true });
+
+/** @param {Element} block @param {Node} node @param {number} offset */
+function offsetIn(block, node, offset) {
+  const prefix = document.createRange();
+  prefix.setStart(block, 0);
+  prefix.setEnd(node, offset);
+  return prefix.toString().length;
+}
+
+/** @param {Element} block @param {number} offset @returns {[Node, number]} */
+function pointIn(block, offset) {
+  const walker = document.createTreeWalker(block, NodeFilter.SHOW_TEXT);
+  let left = offset;
+  /** @type {Node|null} */
+  let node = null;
+  while ((node = walker.nextNode())) {
+    const length = node.textContent?.length ?? 0;
+    if (left <= length) return [node, left];
+    left -= length;
+  }
+  return [block, block.childNodes.length];
+}
+
+/** @param {HTMLButtonElement} button @param {{segment:string}|undefined} word @param {string} label */
+function showExtend(button, word, label) {
+  button.hidden = !word;
+  if (!word) return;
+  button.textContent = label.replace('%', word.segment);
+  button.setAttribute('aria-label', 'Add “' + word.segment + '” to the phrase');
+}
+
+/** @param {'before'|'after'} side */
+function extendLookup(side) {
+  const word = neighbours[side];
+  if (!lookupBlock || !selectionRange || !word) return;
+  const block = lookupBlock;
+  const range = selectionRange.cloneRange();
+  if (side === 'before') range.setStart(...pointIn(block, word.index));
+  else range.setEnd(...pointIn(block, word.index + word.segment.length));
+  openLookup(range);
+}
+extendBefore.addEventListener('click', () => extendLookup('before'));
+extendAfter.addEventListener('click', () => extendLookup('after'));
+
 /** @param {Range} range */
 function openLookup(range) {
+  range = range.cloneRange();
   const text = range.toString().trim().replace(/\s+/g, ' ');
   if (!text || text.length > 320 || !/[a-z]/i.test(text)) return closeLookup();
-  const block = range.startContainer.parentElement?.closest('p,h1,h2,h3,h4,li,figcaption,pre,td,th');
+  const block = range.startContainer.parentElement?.closest(lookupBlocks) ??
+    (range.startContainer instanceof Element ? range.startContainer.closest(lookupBlocks) : null);
   let sentence = '';
+  neighbours = { before: undefined, after: undefined };
   if (block) {
-    const prefix = document.createRange();
-    prefix.setStart(block, 0);
-    prefix.setEnd(range.startContainer, range.startOffset);
-    const offset = prefix.toString().length;
+    const start = offsetIn(block, range.startContainer, range.startOffset);
+    const end = block.contains(range.endContainer) ? offsetIn(block, range.endContainer, range.endOffset) : start;
     const blockText = document.createRange();
     blockText.selectNodeContents(block);
-    sentence = [...sentences.segment(blockText.toString())].find(part =>
-      offset < part.index + part.segment.length
-    )?.segment.trim() ?? '';
+    const part = [...sentences.segment(blockText.toString())].find(part => start < part.index + part.segment.length);
+    sentence = part?.segment.trim() ?? '';
+    if (part && text.split(' ').length < 8) {
+      const inSentence = [...words.segment(part.segment)].filter(word => word.isWordLike)
+        .map(word => ({ index: part.index + word.index, segment: word.segment }));
+      neighbours.before = inSentence.findLast(word => word.index + word.segment.length <= start);
+      neighbours.after = inSentence.find(word => word.index >= end);
+    }
+  }
+  lookupBlock = block;
+  showExtend(extendBefore, neighbours.before, '+ %');
+  showExtend(extendAfter, neighbours.after, '+ %');
+  // On a phone the system selection brings its own menu (and some browsers a search panel)
+  // over the translation, so the phrase is marked by the page instead.
+  if (canHighlight) {
+    const marked = new Highlight(range.cloneRange());
+    marked.priority = 1;
+    CSS.highlights.set('lookup-selection', marked);
+    const chosen = window.getSelection();
+    if (lastPointer !== 'mouse' || chosen?.toString() !== range.toString()) chosen?.removeAllRanges();
   }
   const anchor = block?.closest('[id]')?.id ?? '';
   selection = { text, sentence, anchor };
@@ -584,9 +657,11 @@ document.addEventListener('selectionchange', () => {
     const range = chosen.getRangeAt(0);
     const text = range.toString().trim().replace(/\s+/g, ' ');
     if (text && text !== selection?.text) openLookup(range);
-  }, 400);
+  }, lastPointer === 'mouse' ? 400 : 600);
 });
 window.addEventListener('resize', placeLookup);
+// The card changes size as translations, notes and phrase buttons arrive; keep it on screen.
+new ResizeObserver(() => placeLookup()).observe(lookup);
 window.addEventListener('scroll', () => {
   if (!selectionRange) return;
   const rect = selectionRange.getBoundingClientRect();

@@ -49,6 +49,44 @@ test('read, look up, save and review an expression across devices', async t => {
   assert.deepEqual(errors, []);
 });
 
+test('on a phone a looked-up phrase grows word by word without the system selection', async t => {
+  const url = await startReader(t);
+  const browser = await chromium.launch();
+  t.after(() => browser.close());
+  const phone = await browser.newPage({ viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true });
+  const errors = [];
+  phone.on('pageerror', error => errors.push(error.message));
+  phone.setDefaultTimeout(8000);
+  await phone.goto(url);
+  await phone.getByRole('link', { name: /When a cached answer goes stale/ }).tap();
+  const paragraph = phone.locator('#article p').filter({ hasText: 'while it sits there' });
+  await paragraph.scrollIntoViewIfNeeded();
+  const point = await paragraph.evaluate(p => {
+    const text = p.firstChild;
+    const offset = text.textContent.indexOf('stale');
+    const word = document.createRange();
+    word.setStart(text, offset);
+    word.setEnd(text, offset + 'stale'.length);
+    const position = word.getBoundingClientRect();
+    return { x: position.x + position.width / 2, y: position.y + position.height / 2 };
+  });
+  await phone.touchscreen.tap(point.x, point.y);
+  const expression = phone.locator('#expression');
+  await phone.waitForFunction(() => document.getElementById('expression').textContent === 'stale');
+  await phone.getByRole('button', { name: 'Add “while” to the phrase' }).tap();
+  await phone.waitForFunction(() => document.getElementById('expression').textContent === 'stale while');
+  await phone.getByRole('button', { name: 'Add “go” to the phrase' }).tap();
+  await phone.waitForFunction(() => document.getElementById('expression').textContent === 'go stale while');
+  assert.equal(await expression.textContent(), 'go stale while');
+  assert.equal(await phone.evaluate(() => window.getSelection().isCollapsed), true);
+  assert.equal(await phone.evaluate(() => CSS.highlights.get('lookup-selection')?.size), 1);
+  const box = await phone.locator('#lookup').boundingBox();
+  assert.ok(box && box.x >= 0 && box.x + box.width <= 390, 'the translation stays on screen');
+  await phone.getByRole('button', { name: 'Close translation' }).tap();
+  assert.equal(await phone.evaluate(() => CSS.highlights.has('lookup-selection')), false);
+  assert.deepEqual(errors, []);
+});
+
 test('chapter quiz and both versions of a figure are usable on a narrow screen', async t => {
   const url = await startReader(t);
   const browser = await chromium.launch();

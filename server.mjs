@@ -121,7 +121,9 @@ function renderQuiz(questions, label) {
 }
 
 const translationPopover =
-  '<aside id="lookup"' + (hasLookupModel ? ' data-lookup-model' : '') + (hasContextModel ? ' data-context-model' : '') + ' hidden aria-label="Translation"><div class="lookup-head"><strong id="expression" lang="en"></strong>' +
+  '<aside id="lookup"' + (hasLookupModel ? ' data-lookup-model' : '') + (hasContextModel ? ' data-context-model' : '') + ' hidden aria-label="Translation"><div class="lookup-head"><div class="lookup-phrase">' +
+  '<button class="extend" id="extend-before" type="button" hidden></button><strong id="expression" lang="en"></strong>' +
+  '<button class="extend" id="extend-after" type="button" hidden></button></div>' +
   '<button id="dismiss" type="button" aria-label="Close translation">×</button></div><div id="translation" role="status" lang="' + escape(targetLanguage) + '"></div>' +
   '<small id="translation-source"></small><p id="saved-note" hidden></p><div id="context" hidden lang="' + escape(targetLanguage) + '"></div><div class="lookup-actions">' +
   '<button id="explain" type="button" aria-controls="context" aria-expanded="false" hidden>In context</button>' +

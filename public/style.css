@@ -338,7 +338,23 @@ button:disabled { cursor: default; }
   overflow-wrap: anywhere;
 }
 .lookup-head { display: flex; align-items: start; justify-content: space-between; gap: 20px; }
+.lookup-phrase { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 6px; min-height: 26px; }
 #expression { color: var(--muted); font-size: 13px; font-weight: 500; }
+.extend {
+  min-height: 24px;
+  padding: 1px 8px;
+  border: 1px dashed var(--line-strong);
+  border-radius: 999px;
+  background: transparent;
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.2;
+}
+#lookup button { -webkit-tap-highlight-color: transparent; }
+@media (hover: hover) {
+  .extend:hover { color: var(--rust); border-color: var(--accent-line-strong); background: var(--accent-wash); }
+}
+.extend[hidden] { display: none; }
 #dismiss {
   height: 26px;
   width: 26px;
@@ -507,6 +523,7 @@ button.topbar-link { background: none; border: 0; padding: 0; }
   .brand { font-size: 0; gap: 0; }
   .brand-mark { width: 22px; }
 }
+::highlight(lookup-selection) { color: var(--ink); background-color: var(--selection); }
 ::highlight(saved-expression) {
   background-color: var(--accent-wash);
   text-decoration: underline dotted var(--accent);
