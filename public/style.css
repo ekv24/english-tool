@@ -536,3 +536,8 @@ button.topbar-link { background: none; border: 0; padding: 0; }
   .brand { font-size: 0; gap: 0; }
   .brand-mark { width: 22px; }
 }
+::highlight(saved-expression) {
+  background-color: var(--accent-wash);
+  text-decoration: underline dotted var(--accent);
+  text-underline-offset: .2em;
+}

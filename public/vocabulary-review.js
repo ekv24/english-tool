@@ -104,6 +104,11 @@ export function initReview(list) {
       let copy;
       if (error || waiting) copy = error || waiting;
       else if (card && session) copy = (session.total - session.step) + ' left';
+      else if (available && snapshot?.waiting) {
+        // Show the whole backlog, not just the next round of five.
+        const { due, fresh } = snapshot.waiting;
+        copy = [due ? due + ' to repeat' : '', fresh ? fresh + ' new' : ''].filter(Boolean).join(' · ');
+      }
       else if (available) copy = available + (available === 1 ? ' expression ready' : ' expressions ready');
       else if (snapshot?.nextDue) copy = 'Next review ' +
         new Intl.DateTimeFormat('en', { month: 'short', day: 'numeric' }).format(snapshot.nextDue);

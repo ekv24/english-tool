@@ -7,7 +7,7 @@ import { fileURLToPath } from 'node:url';
 import { promisify } from 'node:util';
 import { brotliCompress, constants, gzip } from 'node:zlib';
 import sharp from 'sharp';
-import { hasLookupModel, targetLanguage, translate, warmSentenceModel, warmTranslation } from './translation.mjs';
+import { hasContextModel, hasLookupModel, matchCase, targetLanguage, translate, translateInContext, warmSentenceModel, warmTranslation } from './translation.mjs';
 import { assets, versionPage } from './assets.mjs';
 import { libraryDirectory, libraryIds, loadArticle, loadGlossary, originalFile, originalSource, readOptional, readQuiz } from './library.mjs';
 import { escape } from './html.mjs';
@@ -121,7 +121,7 @@ function renderQuiz(questions, label) {
 }
 
 const translationPopover =
-  '<aside id="lookup"' + (hasLookupModel ? ' data-lookup-model' : '') + ' hidden aria-label="Translation"><div class="lookup-head"><strong id="expression" lang="en"></strong>' +
+  '<aside id="lookup"' + (hasLookupModel ? ' data-lookup-model' : '') + (hasContextModel ? ' data-context-model' : '') + ' hidden aria-label="Translation"><div class="lookup-head"><strong id="expression" lang="en"></strong>' +
   '<button id="dismiss" type="button" aria-label="Close translation">×</button></div><div id="translation" role="status" lang="' + escape(targetLanguage) + '"></div>' +
   '<small id="translation-source"></small><p id="saved-note" hidden></p><div id="context" hidden lang="' + escape(targetLanguage) + '"></div><div class="lookup-actions">' +
   '<button id="explain" type="button" aria-controls="context" aria-expanded="false" hidden>In context</button>' +
@@ -350,6 +350,15 @@ const server = createServer(async (req, res) => {
     warmSentenceModel();
     const normalized = normalizeExpression(text);
     const term = glossary.get(normalized) ?? glossary.get(normalized.toLowerCase());
+    if (url.searchParams.has('refine')) {
+      // A second, slower answer: the expression translated inside its sentence.
+      if (term || !sentence || sentence.toLowerCase() === text.toLowerCase() || text.split(' ').length > 6) {
+        return send(422, 'Nothing to refine', 'text/plain');
+      }
+      const refined = await translateInContext(text, sentence, glossary).catch(() => null);
+      if (!refined) return send(422, 'No translation in context', 'text/plain');
+      return send(200, JSON.stringify({ text: refined, source: 'In context' }), 'application/json');
+    }
     if (url.searchParams.has('context')) {
       let translatedSentence = '';
       if (hasLookupModel && sentence && sentence.toLowerCase() !== text.toLowerCase()) {
@@ -362,6 +371,7 @@ const server = createServer(async (req, res) => {
     }
     if (!term && !hasLookupModel) return send(422, 'No glossary entry for this selection. Configure a lookup model to look up more expressions.', 'text/plain');
     const result = term ? { text: term[0], source: label } : await translate(text, glossary);
+    if (!term) result.text = matchCase(text, result.text);
     return send(200, JSON.stringify(result), 'application/json');
   }
 

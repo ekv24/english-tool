@@ -157,6 +157,83 @@ async function translateWithOllama(text, glossary, sentence) {
   return remember(key, output.trim());
 }
 
+/** TranslateGemma can translate a word inside its sentence; other models are not asked to. */
+export const hasContextModel = !definitionMode && /^translategemma(?::|$)/i.test(ollamaModel ?? '');
+
+/** @param {string} sentence @param {string} text @param {string} open @param {string} close */
+function markInSentence(sentence, text, open, close) {
+  const escaped = text.replace(/[.*+?^${}()|[\]\\]/g, '\\$&').replace(/\s+/g, '\\s+');
+  const match = new RegExp('(?<![\\p{L}\\p{N}])' + escaped + '(?![\\p{L}\\p{N}])', 'iu').exec(sentence);
+  if (!match) return null;
+  return sentence.slice(0, match.index) + open + match[0] + close + sentence.slice(match.index + match[0].length);
+}
+
+/**
+ * Translates a word or short phrase as it is used in its sentence. The sentence goes to
+ * TranslateGemma with the expression marked, and the marked part of the translation is
+ * returned. Returns null when the model drops the marks.
+ * @param {string} text @param {string} sentence @param {ReadonlyMap<string,[string,string]>} glossary
+ */
+export async function translateInContext(text, sentence, glossary) {
+  if (!hasContextModel) return null;
+  const formats = [
+    ['<b>', '</b>', 'keeping the <b> tags around the translation of the marked words', /<b>([\s\S]*?)<\/b>/],
+    ['[[', ']]', 'Keep the double square brackets [[ ]] around the ' + targetLabel + ' words that translate the bracketed English words', /\[\[([\s\S]*?)\]\]/],
+  ];
+  for (const [open, close, rule, pattern] of /** @type {[string,string,string,RegExp][]} */ (formats)) {
+    const marked = markInSentence(sentence, text, open, close);
+    if (!marked) return null;
+    const terms = glossaryForSentence(sentence, glossary);
+    const terminology = terms ? 'Use the following glossary when translating. Preserve the ' + targetLabel +
+      ' terminology below, changing only its grammatical form as needed. Do not translate or repeat this glossary.\n' + terms + '\n\n' : '';
+    const prompt = 'You are a professional English (en) to ' + targetLabel + ' (' + targetLanguage + ') translator. ' +
+      'Your goal is to accurately convey the meaning and nuances of the original English text while adhering to ' +
+      targetLabel + ' grammar, vocabulary, and cultural sensitivities.\n' + terminology +
+      'Produce only the ' + targetLabel + ' translation. ' + rule + '. Please translate the following English text into ' +
+      targetLabel + ':\n\n\n' + marked;
+    const output = await askOllama(prompt);
+    const found = output.match(pattern)?.[1]?.trim().replace(/\s+/g, ' ').replace(/^[«"“]|[»"”.,;:]$/g, '');
+    if (found && found.length <= Math.max(40, text.length * 4)) return matchCase(text, found, sentence);
+  }
+  return null;
+}
+
+/**
+ * Lowercases a translation unless the English expression is a name or an acronym. A capital
+ * letter that only comes from the start of the sentence does not count.
+ * @param {string} english @param {string} translation @param {string} [sentence]
+ */
+export function matchCase(english, translation, sentence = '') {
+  const startsSentence = sentence.trimStart().toLowerCase().startsWith(english.toLowerCase());
+  const name = /\p{Lu}/u.test(english.slice(1)) || (/^\p{Lu}/u.test(english) && !startsSentence);
+  return name ? translation : translation.charAt(0).toLocaleLowerCase(targetLanguage) + translation.slice(1);
+}
+
+/** @param {string} prompt */
+async function askOllama(prompt) {
+  const key = 'ollama:' + ollamaModel + ':' + prompt;
+  const cached = recall(key);
+  if (cached !== undefined) return cached;
+  const response = await fetch(new URL('/api/chat', ollamaUrl), {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    signal: AbortSignal.timeout(15_000),
+    body: JSON.stringify({
+      model: ollamaModel, stream: false, keep_alive: '30m',
+      messages: [{ role: 'user', content: prompt }],
+      options: { temperature: 0, num_ctx: 2048, num_predict: 400 },
+    }),
+  });
+  if (!response.ok) throw new Error('Ollama lookup failed (' + response.status + ')');
+  const result = await response.json();
+  const output = result.message?.content;
+  if (result.done_reason !== 'stop' || typeof output !== 'string' || !output.trim()) {
+    throw new Error('Ollama returned no complete lookup result');
+  }
+  warmedAt = Date.now();
+  return remember(key, output.trim());
+}
+
 /**
  * Looks up a selection with OPUS-MT and a surrounding sentence with Ollama when both are set.
  * Falls back to OPUS-MT if Ollama is unavailable.

@@ -282,7 +282,10 @@ result.addEventListener('keydown', event => {
     refreshSave();
   }
 });
-result.addEventListener('input', () => { if (saveSelection) { updateSave(false); updateSavedNote(); } });
+result.addEventListener('input', () => {
+  edited = true;
+  if (saveSelection) { updateSave(false); updateSavedNote(); }
+});
 
 function resetSave() {
   saveSelection = null;
@@ -316,6 +319,7 @@ save?.addEventListener('click', () => {
   const translation = currentTranslation();
   if (!translation) return;
   saveSelection = { ...saveSelection, translation };
+  savedHere = true;
   try {
     const key = expressionKey(saveSelection);
     if (!stateValue(key)) {
@@ -330,6 +334,88 @@ save?.addEventListener('click', () => {
 });
 
 if (save) window.addEventListener('readerstatechange', refreshSave);
+
+// Saved expressions are marked in the text with the CSS Custom Highlight API, which leaves the DOM unchanged.
+let highlightTimer = 0;
+function highlightSaved() {
+  if (typeof Highlight !== 'function' || !CSS.highlights) return;
+  /** @type {string[]} */
+  let texts = [];
+  try {
+    texts = [...new Set(stateRecords('vocabulary:').flatMap(([, , entry]) =>
+      entry && typeof entry === 'object' && 'savedAt' in entry ? [entry.text.trim().toLowerCase()] : []))]
+      .filter(text => /\p{L}{2}/u.test(text));
+  } catch { /* Highlighting is optional. */ }
+  if (!texts.length) { CSS.highlights.delete('saved-expression'); return; }
+  const alternatives = texts.sort((a, b) => b.length - a.length)
+    .map(text => text.replace(/[.*+?^${}()|[\]\\]/g, '\\$&').replace(/\s+/g, '\\s+'));
+  const pattern = new RegExp('(?<![\\p{L}\\p{N}])(?:' + alternatives.join('|') + ')(?![\\p{L}\\p{N}])', 'giu');
+  const walker = document.createTreeWalker(article, NodeFilter.SHOW_TEXT, {
+    acceptNode: node => node.parentElement?.closest('pre, code, mjx-container, h1, figcaption')
+      ? NodeFilter.FILTER_REJECT : NodeFilter.FILTER_ACCEPT,
+  });
+  /** @type {Range[]} */
+  const ranges = [];
+  for (let node = walker.nextNode(); node; node = walker.nextNode()) {
+    const text = /** @type {Text} */ (node);
+    for (const match of text.data.matchAll(pattern)) {
+      const range = new Range();
+      range.setStart(text, match.index);
+      range.setEnd(text, match.index + match[0].length);
+      ranges.push(range);
+    }
+  }
+  CSS.highlights.set('saved-expression', new Highlight(...ranges));
+}
+function scheduleHighlight() {
+  clearTimeout(highlightTimer);
+  highlightTimer = window.setTimeout(highlightSaved, 300);
+}
+window.addEventListener('readerstatechange', scheduleHighlight);
+scheduleHighlight();
+
+/** @type {AbortController | undefined} */
+let refining;
+let edited = false;
+let savedHere = false;
+
+/**
+ * Replaces the quick translation with one that takes the sentence into account, unless
+ * the reader has already edited or saved it. The quick answer stays when the model has none.
+ * @param {string} text @param {string} quickSource
+ */
+async function refineLookup(text, quickSource) {
+  refining?.abort();
+  const sentence = selection?.sentence ?? '';
+  if (!lookup.hasAttribute('data-context-model') || !sentence || sentence.length > maxSentenceLength ||
+      normalized(sentence) === normalized(text) || text.split(' ').length > 6) return;
+  refining = new AbortController();
+  const { signal } = refining;
+  const key = new URLSearchParams({ text, sentence, refine: '1' }).toString();
+  source.textContent = quickSource + ' · checking the sentence…';
+  try {
+    let response = translations.get(key);
+    if (!response) {
+      const reply = await fetch(lookupUrl + '?' + key, { signal });
+      if (!reply.ok) throw new Error('No refinement');
+      response = /** @type {{text:string,source:string}} */ (await reply.json());
+      translations.set(key, response);
+    }
+    if (signal.aborted || selection?.text !== text) return;
+    // Keep what the reader typed or just saved; otherwise show the better translation.
+    if (edited || savedHere) {
+      if (normalized(response.text) !== normalized(currentTranslation())) source.textContent = quickSource + ' · in this sentence: ' + response.text;
+      else source.textContent = 'In this sentence';
+    } else {
+      result.textContent = response.text;
+      source.textContent = 'In this sentence';
+      refreshSave();
+    }
+  } catch {
+    if (!signal.aborted && selection?.text === text) source.textContent = quickSource;
+  }
+  placeLookup();
+}
 
 /** @param {string} text @param {boolean} [withContext] */
 async function fetchLookup(text, withContext = false) {
@@ -374,6 +460,7 @@ async function fetchLookup(text, withContext = false) {
           href: location.pathname + '#' + encodeURIComponent(selection.anchor), title: documentTitle,
         });
       }
+      if (!hasGlossaryNote) void refineLookup(text, response.source);
     }
   } catch {
     if (!signal.aborted) target.textContent = 'Translation unavailable. Try again.';
@@ -394,6 +481,7 @@ function placeLookup() {
 
 function closeLookup() {
   request?.abort();
+  refining?.abort();
   const chosen = window.getSelection();
   if (chosen?.rangeCount && chosen.toString() === selectionRange?.toString()) chosen.removeAllRanges();
   lookup.hidden = true;
@@ -421,6 +509,9 @@ function openLookup(range) {
   }
   const anchor = block?.closest('[id]')?.id ?? '';
   selection = { text, sentence, anchor };
+  refining?.abort();
+  edited = false;
+  savedHere = false;
   resetSave();
   selectionRange = range.cloneRange();
   expression.textContent = text;

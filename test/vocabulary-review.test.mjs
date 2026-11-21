@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import { openReaderState } from '../reader-state.mjs';
+import { nextStage } from '../vocabulary-review.mjs';
 import { expressionKey } from '../public/reader-records.js';
 
 const book = '/books/causal-inference/01-introduction-to-causality#bias';
@@ -82,7 +83,8 @@ test('offers five cards after an absence, including when one thousand are due', 
     const earned = exchange(0, [], index, {
       type: 'answer', id: resumed.session.id, step: 0, grade: 'remembered', answeredAt: now,
     }).vocabulary;
-    assert.equal(earned.entries[resumed.session.queue[0].sourceKey].dueAt, now + 3 * day);
+    // Recalled after a 30-day gap, the card keeps the 30-day interval it has just survived.
+    assert.equal(earned.entries[resumed.session.queue[0].sourceKey].dueAt, now + 30 * day);
     const forgotten = exchange(0, [], index, {
       type: 'answer', id: resumed.session.id, step: 1, grade: 'again', answeredAt: now,
     }).vocabulary;
@@ -100,4 +102,12 @@ test('keeps the glossary form when a saved adjectival translation matches it', (
   const { entries } = exchange(0, [addicting, established], index).vocabulary;
   assert.equal(entries[addicting[0]].lemma, 'addicting');
   assert.equal(entries[established[0]].lemma, 'well established');
+});
+
+test('schedules reviews from the time that actually passed', () => {
+  assert.equal(nextStage(-1, 0, day, 'remembered'), 0, 'a new card starts at one day');
+  assert.equal(nextStage(0, day, 2 * day, 'remembered'), 1, 'an on-time review moves one step');
+  assert.equal(nextStage(0, day, 41 * day, 'remembered'), 4, 'a card recalled after 40 days keeps a 30-day interval');
+  assert.equal(nextStage(6, day, 2 * day, 'again'), 0, 'a forgotten long-term card skips the extra one-day repeat');
+  assert.equal(nextStage(1, day, 2 * day, 'again'), -1, 'a forgotten young card starts over');
 });

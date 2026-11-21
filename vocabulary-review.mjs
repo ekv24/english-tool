@@ -24,6 +24,22 @@ const generalPhrases = new Set([
   'stem from', 'take into account', 'take on', 'think through', 'turn out', 'work out',
 ]);
 
+/**
+ * Moves a card along the interval ladder. Reviews happen whenever the reader has time, so a
+ * card recalled after a long gap jumps to the interval it has already survived, and a card
+ * forgotten after a month or more comes back in a day and then moves on to three days
+ * without the extra one-day repeat that new cards get.
+ * @param {number} stage @param {number} lastReviewedAt @param {number} at @param {Grade} grade
+ */
+export function nextStage(stage, lastReviewedAt, at, grade) {
+  if (grade === 'again') return stage >= 4 ? 0 : -1;
+  const next = Math.min(stage + 1, intervals.length - 1);
+  if (!lastReviewedAt) return next;
+  const elapsed = (at - lastReviewedAt) / day;
+  const survived = intervals.findLastIndex(days => days <= elapsed);
+  return Math.max(next, Math.min(survived, intervals.length - 1));
+}
+
 /** @param {unknown} value @returns {value is ReviewAction} */
 export function isReviewAction(value) {
   if (!value || typeof value !== 'object' || !('type' in value)) return false;
@@ -138,8 +154,8 @@ export function createVocabularyReview(db) {
       const card = current.queue[current.step];
       if (card) {
         const old = info.get(card.id);
-        const stage = action.grade === 'again' ? -1 : Math.min(Number(old?.stage ?? -1) + 1, intervals.length - 1);
         const at = Math.min(now, Math.max(Number(old?.last_reviewed_at ?? 0), action.answeredAt));
+        const stage = nextStage(Number(old?.stage ?? -1), Number(old?.last_reviewed_at ?? 0), at, action.grade);
         const due = at + intervals[Math.max(0, stage)] * day;
         saveReview.run(card.id, stage, at, due);
         info.set(card.id, { stage, last_reviewed_at: at, due_at: due });
@@ -163,6 +179,7 @@ export function createVocabularyReview(db) {
     }
 
     const available = Math.min(sessionSize, due.length + fresh.length);
+    const waiting = { due: due.length, fresh: fresh.length };
     const upcoming = ordered.reduce((date, row) => row.dueAt > now ? Math.min(date, row.dueAt) : date, Infinity);
     return {
       session: current && {
@@ -171,7 +188,7 @@ export function createVocabularyReview(db) {
           lemma: card.lemma, expression: card.expression, showContext: card.showContext, sourceKey: card.sourceKey,
         })),
       },
-      available, nextDue: Number.isFinite(upcoming) ? upcoming : null,
+      available, waiting, nextDue: Number.isFinite(upcoming) ? upcoming : null,
       entries: Object.fromEntries([...sourceTerms].map(([key, term]) => [
         key, {
           lemma: term.lemma, preference: manual.get(term.id) ?? 'auto',
