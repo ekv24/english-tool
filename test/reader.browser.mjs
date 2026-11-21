@@ -131,3 +131,26 @@ test('a second browser resumes at the saved passage', async t => {
   await second.waitForFunction(selector =>
     Math.abs(document.querySelector(selector).getBoundingClientRect().top - 130) < 5, section);
 });
+
+test('the introduction counts toward a book’s progress, weighted by its length', async t => {
+  const url = await startReader(t);
+  const id = 'reading-a-latency-report';
+  const position = { anchor: '', offset: 0, y: 400, hash: '', percent: 50 };
+  const response = await fetch(url + '/api/reader-state', {
+    method: 'POST', headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ since: 0, records: [['reading:v3:' + id + '/introduction', Date.now(), position]] }),
+  });
+  assert.equal(response.status, 200);
+  const browser = await chromium.launch();
+  t.after(() => browser.close());
+  const page = await browser.newPage();
+  page.setDefaultTimeout(8000);
+  await page.goto(url);
+  const shelf = page.locator('[data-book="' + id + '"]');
+  const words = await shelf.locator('[data-book-page]').evaluateAll(pages =>
+    pages.map(page => Number(page.getAttribute('data-page-words'))));
+  assert.ok(words.every(count => count > 0));
+  const expected = Math.floor(50 * words[0] / words.reduce((sum, count) => sum + count, 0) * 10) / 10;
+  await page.waitForFunction(selector => Number(document.querySelector(selector)?.value) > 0, '[data-book="' + id + '"] progress');
+  assert.equal(await shelf.locator('progress').evaluate(bar => bar.value), expected);
+});

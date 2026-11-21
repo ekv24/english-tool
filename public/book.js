@@ -9,7 +9,7 @@ const startLinks = new Map([...document.querySelectorAll('a[data-book-resume]')]
 function updateBook(container) {
   const id = container.dataset.book;
   const base = '/books/' + id + '/';
-  /** @type {Map<string, {title: string, type: string, percent: number, read: boolean, time: number}>} */
+  /** @type {Map<string, {title: string, type: string, percent: number, read: boolean, time: number, words: number}>} */
   const pages = new Map();
   for (const entry of container.querySelectorAll('[data-book-page]')) {
     const slug = entry.getAttribute('data-book-page') ?? '';
@@ -23,6 +23,7 @@ function updateBook(container) {
       percent: read ? 100 : percent,
       read,
       time: position?.y ? position.updatedAt ?? 0 : 0,
+      words: Number(entry.getAttribute('data-page-words')) || 0,
     });
     const label = entry.querySelector('[data-page-progress]');
     if (label) label.textContent = read ? 'Finished' : percent ? 'At ' + percentLabel(percent) : '';
@@ -34,7 +35,11 @@ function updateBook(container) {
 
   const chapters = [...pages.values()].filter(page => page.type === 'chapter');
   const finished = chapters.filter(page => page.read).length;
-  const percent = Math.floor(chapters.reduce((sum, page) => sum + page.percent, 0) / (chapters.length || 1) * 10) / 10;
+  // The book's main text counts, introduction included, each page by its length (the server leaves notes and such at 0).
+  const all = [...pages.values()];
+  const weight = /** @param {{words:number}} page */ page => all.some(other => other.words) ? page.words : 1;
+  const total = all.reduce((sum, page) => sum + weight(page), 0);
+  const percent = Math.min(100, Math.floor(all.reduce((sum, page) => sum + page.percent * weight(page), 0) / (total || 1) * 10) / 10);
   for (const bar of container.querySelectorAll('progress[data-book-progress]')) {
     if (bar instanceof HTMLProgressElement) bar.value = percent;
   }

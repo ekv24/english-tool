@@ -1,3 +1,4 @@
+import { readFile, stat } from 'node:fs/promises';
 import { escape } from './html.mjs';
 import { libraryDirectory, libraryIds, originalSource, readMetadata } from './library.mjs';
 
@@ -6,7 +7,7 @@ export function bookPath(id) {
   return '/books/' + id;
 }
 
-/** @typedef {{slug:string,title:string,number?:string,original:string,type:'intro'|'chapter'|'appendix'}} BookPage */
+/** @typedef {{slug:string,title:string,number?:string,original:string,type:'intro'|'chapter'|'appendix',words?:number}} BookPage */
 /** @typedef {{title:string,entries:({slug:string}|{title:string,href:string})[]}} BookPart */
 /**
  * @typedef {{id:string,title:string,author:string,source?:string,math?:boolean,glossaryLanguage?:string,cover?:string,
@@ -14,11 +15,33 @@ export function bookPath(id) {
  *   items:BookPage[],toc:BookPart[]}} Book
  */
 
+/** @type {Map<string,{mtimeMs:number,words:number}>} */
+const pageWords = new Map();
+
+/** Counts the words of a book page so its share of the book's progress matches its length. @param {URL} file */
+async function wordsIn(file) {
+  try {
+    const { mtimeMs } = await stat(file);
+    const cached = pageWords.get(file.href);
+    if (cached?.mtimeMs === mtimeMs) return cached.words;
+    const text = (await readFile(file, 'utf8')).replace(/<(script|style|svg|math)\b[\s\S]*?<\/\1>/gi, ' ').replace(/<[^>]*>/g, ' ');
+    const words = text.match(/\p{L}+/gu)?.length ?? 0;
+    pageWords.set(file.href, { mtimeMs, words });
+    return words;
+  } catch { return 0; }
+}
+
 /** @param {string} id @param {URL} directory @returns {Promise<Book|null>} */
 export async function loadBook(id, directory) {
   const book = /** @type {Book|null} */ (await readMetadata(new URL('manifest.json', directory), id));
-  return book?.id === id && book.items.length &&
-    book.items.every(item => /^[a-z0-9-]+$/.test(item.slug)) ? book : null;
+  if (!(book?.id === id && book.items.length && book.items.every(item => /^[a-z0-9-]+$/.test(item.slug)))) return null;
+  // Only the main text counts toward progress: notes, index, copyright and covers are also "appendix" pages.
+  const mainText = /** @param {BookPage} item */ item =>
+    item.type !== 'appendix' || /^(?:conclusion|epilogue|afterword|appendix(?:-[a-z0-9-]+)?)$/.test(item.slug);
+  await Promise.all(book.items.map(async item => {
+    item.words = mainText(item) ? await wordsIn(new URL(item.slug + '.html', directory)) : 0;
+  }));
+  return book;
 }
 
 export async function loadBooks() {
@@ -76,7 +99,8 @@ export function libraryImage(base, file, eager = false) {
 
 /** @param {BookPage} item */
 function bookPageData(item) {
-  return '<span data-book-page="' + escape(item.slug) + '" data-page-type="' + escape(item.type) + '" data-page-title="' + escape(item.title) + '"></span>';
+  return '<span data-book-page="' + escape(item.slug) + '" data-page-type="' + escape(item.type) + '" data-page-title="' + escape(item.title) + '"' +
+    ' data-page-words="' + (item.words ?? 0) + '"></span>';
 }
 
 /** @param {Book} book */
@@ -119,7 +143,7 @@ export function bookContents(book, current) {
     const currentPage = item.slug === current?.slug ? ' aria-current="page"' : '';
     return '<li class="book-entry"><a href="' + bookPath(book.id) + '/' + escape(item.slug) + '"' + currentPage +
       ' data-book-page="' + escape(item.slug) + '" data-page-type="' + escape(item.type) + '" data-page-title="' + escape(item.title) + '"' +
-      ' aria-label="' + escape(item.title) + '">' +
+      ' data-page-words="' + (item.words ?? 0) + '" aria-label="' + escape(item.title) + '">' +
       (item.number ? '<span class="book-entry-number">' + escape(item.number) + '</span>' : '') +
       '<span class="book-entry-title">' + escape(item.number ? item.title.slice(item.number.length + 3) : item.title) + '</span>' +
       '<span class="book-entry-progress" data-page-progress></span></a></li>';
