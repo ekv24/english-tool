@@ -29,3 +29,6 @@ export function setRead(id, read) {
     return true;
   } catch { return false; }
 }
+
+/** Reading progress to a tenth of a percent, e.g. "42.3%". @param {number} percent */
+export const percentLabel = percent => (Math.floor(percent * 10) / 10).toFixed(1) + '%';

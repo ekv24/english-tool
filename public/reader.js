@@ -135,7 +135,7 @@ function saveReadingPosition() {
   const end = article.getBoundingClientRect().bottom;
   const start = article.getBoundingClientRect().top + y;
   const distance = end + y - innerHeight;
-  const percent = Math.min(99, Math.floor(Math.max(0, (y - start) / Math.max(1, distance - start)) * 100));
+  const percent = Math.min(99.9, Math.floor(Math.max(0, (y - start) / Math.max(1, distance - start)) * 1000) / 10);
   savePosition(documentId, {
     anchor: y ? block.id : '',
     offset: y ? -rect.top : 0,

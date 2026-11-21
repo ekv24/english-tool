@@ -33,7 +33,7 @@ export function isReaderRecord(raw) {
   if (/^reading:v3:[a-z0-9-]+(?:\/[\w-]+)?$/.test(key)) {
     const { anchor, offset, y, percent, hash, anchorHeight } = value;
     return typeof anchor === 'string' && Number.isFinite(offset) && Number.isFinite(y) && y >= 0 &&
-      Number.isInteger(percent) && percent >= 0 && percent <= 99 &&
+      Number.isFinite(percent) && percent >= 0 && percent < 100 &&
       (hash === undefined || typeof hash === 'string') &&
       (anchorHeight === undefined || (Number.isFinite(anchorHeight) && anchorHeight >= 0));
   }

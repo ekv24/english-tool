@@ -164,8 +164,8 @@ test('restores two positions from newly opened tabs and tracks documents indepen
   await page.locator('.end').scrollIntoViewIfNeeded();
   await page.evaluate(() => scrollTo(0, document.body.scrollHeight));
   await page.getByRole('link', { name: '← Back to library', exact: true }).click();
-  await firstCard.getByText('At 99%', { exact: true }).waitFor();
-  assert.equal(await firstProgress.evaluate(node => node.value), 99);
+  await firstCard.getByText('At 99.9%', { exact: true }).waitFor();
+  assert.equal(await firstProgress.evaluate(node => node.value), 99.9);
   assert.equal(await secondProgress.evaluate(node => node.value), secondBefore);
   await capture('04-library.png');
   await page.locator('.article-grid').getByRole('link', { name: /Harness design for long-running/ }).click();
@@ -236,7 +236,7 @@ test('shares saved expressions and the reading position between independent brow
   await phone.locator('#' + anchor).evaluate(el => scrollTo(0, scrollY + el.getBoundingClientRect().top - 110));
   await mac.goto(url);
   const source = mac.locator('[data-material="effective-harnesses"]');
-  await source.getByText(/^At [1-9]\d*%$/).waitFor();
+  await source.getByText(/^At (?!0\.0%)\d+\.\d%$/).waitFor();
   await source.click();
   await mac.waitForFunction(id => Math.abs(document.getElementById(id).getBoundingClientRect().top - 110) < 6, anchor, { timeout: 8000 });
 });
@@ -251,7 +251,7 @@ test('reopens an article at the top after a preview and only finishes it by requ
     await tab.goto(base + first);
     await tab.evaluate(() => document.fonts.ready);
     await tab.evaluate(() => scrollTo(0, document.body.scrollHeight));
-    await card.getByText('At 99%', { exact: true }).waitFor();
+    await card.getByText('At 99.9%', { exact: true }).waitFor();
     await tab.evaluate(() => scrollTo(0, 0));
     await card.getByText('To read', { exact: true }).waitFor();
     await tab.close();

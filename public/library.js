@@ -1,4 +1,4 @@
-import { loadPosition } from './progress.js';
+import { loadPosition, percentLabel } from './progress.js';
 import { stateRecords } from './sync.js';
 import './book.js';
 
@@ -15,7 +15,7 @@ function updateArticles() {
     const progress = card.querySelector('progress');
     if (progress) progress.value = position?.read ? 100 : percent;
     if (label) label.textContent = position?.read ? 'Finished ✓'
-      : percent ? 'At ' + percent + '%' : position?.y ? 'In progress' : 'To read';
+      : percent ? 'At ' + percentLabel(percent) : position?.y ? 'In progress' : 'To read';
     card.dataset.state = position?.read ? 'done' : position?.y ? 'reading' : 'new';
     card.dataset.percent = String(position?.read ? 100 : percent);
     card.dataset.time = String(position?.y ? position.updatedAt ?? 0 : 0);
@@ -84,7 +84,7 @@ function updateContinue() {
     progress.value = item.percent;
     progress.setAttribute('aria-label', 'Progress in ' + item.title);
     const meter = element('span', 'continue-meter');
-    meter.append(progress, element('span', 'continue-percent', item.percent ? item.percent + '%' : 'Started'));
+    meter.append(progress, element('span', 'continue-percent', item.percent ? percentLabel(item.percent) : 'Started'));
     copy.append(element('span', 'continue-kind', item.kind), element('span', 'continue-title', item.title));
     if (item.detail) copy.append(element('span', 'continue-detail', item.detail));
     copy.append(meter);

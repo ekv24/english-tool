@@ -1,4 +1,4 @@
-import { loadPosition } from './progress.js';
+import { loadPosition, percentLabel } from './progress.js';
 import './book-search.js';
 
 const startLinks = new Map([...document.querySelectorAll('a[data-book-resume]')].map(link => [
@@ -25,7 +25,7 @@ function updateBook(container) {
       time: position?.y ? position.updatedAt ?? 0 : 0,
     });
     const label = entry.querySelector('[data-page-progress]');
-    if (label) label.textContent = read ? 'Finished' : percent ? 'At ' + percent + '%' : '';
+    if (label) label.textContent = read ? 'Finished' : percent ? 'At ' + percentLabel(percent) : '';
     if (entry.hasAttribute('aria-label')) {
       entry.setAttribute('aria-label', label?.textContent ? title + ', ' + label.textContent : title);
     }
@@ -34,7 +34,7 @@ function updateBook(container) {
 
   const chapters = [...pages.values()].filter(page => page.type === 'chapter');
   const finished = chapters.filter(page => page.read).length;
-  const percent = Math.floor(chapters.reduce((sum, page) => sum + page.percent, 0) / (chapters.length || 1));
+  const percent = Math.floor(chapters.reduce((sum, page) => sum + page.percent, 0) / (chapters.length || 1) * 10) / 10;
   for (const bar of container.querySelectorAll('progress[data-book-progress]')) {
     if (bar instanceof HTMLProgressElement) bar.value = percent;
   }
