@@ -160,42 +160,49 @@ async function translateWithOllama(text, glossary, sentence) {
 /** TranslateGemma can translate a word inside its sentence; other models are not asked to. */
 export const hasContextModel = !definitionMode && /^translategemma(?::|$)/i.test(ollamaModel ?? '');
 
-/** @param {string} sentence @param {string} text @param {string} open @param {string} close */
-function markInSentence(sentence, text, open, close) {
-  const escaped = text.replace(/[.*+?^${}()|[\]\\]/g, '\\$&').replace(/\s+/g, '\\s+');
-  const match = new RegExp('(?<![\\p{L}\\p{N}])' + escaped + '(?![\\p{L}\\p{N}])', 'iu').exec(sentence);
-  if (!match) return null;
-  return sentence.slice(0, match.index) + open + match[0] + close + sentence.slice(match.index + match[0].length);
+/** Word stems long enough to recognise a Russian word in another grammatical form. @param {string} text */
+function stems(text) {
+  return (text.toLowerCase().match(/\p{L}+/gu) ?? []).filter(word => word.length >= 4)
+    .map(word => word.slice(0, Math.max(4, Math.ceil(word.length * .6))));
 }
 
 /**
- * Translates a word or short phrase as it is used in its sentence. The sentence goes to
- * TranslateGemma with the expression marked, and the marked part of the translation is
- * returned. Returns null when the model drops the marks.
+ * Translates a word or short phrase as it is used in its sentence. TranslateGemma is asked to
+ * translate «"word", as used in the sentence: "…"»; it answers with the word's translation in
+ * quotes followed by its translation of the sentence. The answer is kept only when the word's
+ * translation also appears in that sentence translation, which rejects answers that drift to a
+ * neighbouring word. Returns null when there is no trustworthy answer.
  * @param {string} text @param {string} sentence @param {ReadonlyMap<string,[string,string]>} glossary
  */
 export async function translateInContext(text, sentence, glossary) {
   if (!hasContextModel) return null;
-  const formats = [
-    ['<b>', '</b>', 'keeping the <b> tags around the translation of the marked words', /<b>([\s\S]*?)<\/b>/],
-    ['[[', ']]', 'Keep the double square brackets [[ ]] around the ' + targetLabel + ' words that translate the bracketed English words', /\[\[([\s\S]*?)\]\]/],
-  ];
-  for (const [open, close, rule, pattern] of /** @type {[string,string,string,RegExp][]} */ (formats)) {
-    const marked = markInSentence(sentence, text, open, close);
-    if (!marked) return null;
-    const terms = glossaryForSentence(sentence, glossary);
-    const terminology = terms ? 'Use the following glossary when translating. Preserve the ' + targetLabel +
-      ' terminology below, changing only its grammatical form as needed. Do not translate or repeat this glossary.\n' + terms + '\n\n' : '';
-    const prompt = 'You are a professional English (en) to ' + targetLabel + ' (' + targetLanguage + ') translator. ' +
-      'Your goal is to accurately convey the meaning and nuances of the original English text while adhering to ' +
-      targetLabel + ' grammar, vocabulary, and cultural sensitivities.\n' + terminology +
-      'Produce only the ' + targetLabel + ' translation. ' + rule + '. Please translate the following English text into ' +
-      targetLabel + ':\n\n\n' + marked;
-    const output = await askOllama(prompt);
-    const found = output.match(pattern)?.[1]?.trim().replace(/\s+/g, ' ').replace(/^[«"“]|[»"”.,;:]$/g, '');
-    if (found && found.length <= Math.max(40, text.length * 4)) return matchCase(text, found, sentence);
-  }
-  return null;
+  const terms = glossaryForSentence(sentence, glossary);
+  const terminology = terms ? 'Use the following glossary when translating. Preserve the ' + targetLabel +
+    ' terminology below, changing only its grammatical form as needed. Do not translate or repeat this glossary.\n' + terms + '\n\n' : '';
+  const prompt = 'You are a professional English (en) to ' + targetLabel + ' (' + targetLanguage + ') translator. ' +
+    'Your goal is to accurately convey the meaning and nuances of the original English text while adhering to ' +
+    targetLabel + ' grammar, vocabulary, and cultural sensitivities.\n' + terminology +
+    'Produce only the ' + targetLabel + ' translation, without any additional explanations or commentary. ' +
+    'Please translate the following English text into ' + targetLabel + ':\n\n\n' +
+    '"' + text + '", as used in the sentence: "' + sentence.replace(/"/g, "'") + '"';
+  const output = await askOllama(prompt);
+  return checkInContext(text, sentence, output);
+}
+
+/**
+ * Picks the quoted translation of the expression out of TranslateGemma's answer and checks it
+ * against the sentence translation that follows it.
+ * @param {string} text @param {string} sentence @param {string} output
+ */
+export function checkInContext(text, sentence, output) {
+  const [, found = '', rest = ''] = output.match(/^\s*[«"“„]([^«»"“”„\n]{1,60})[»"”“]([\s\S]*)$/u) ?? [];
+  const candidate = found.trim().replace(/\s+/g, ' ').replace(/[.,;:!?]+$/, '');
+  if (!candidate || /[a-z]/i.test(candidate) || candidate.split(' ').length > text.split(' ').length + 3) return null;
+  const echo = rest.toLowerCase();
+  if (echo.length < 12) return null;
+  const parts = stems(candidate);
+  const confirmed = parts.length ? parts.every(stem => echo.includes(stem)) : echo.includes(candidate.toLowerCase());
+  return confirmed ? matchCase(text, candidate, sentence) : null;
 }
 
 /**
