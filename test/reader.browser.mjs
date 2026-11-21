@@ -30,7 +30,11 @@ test('read, look up, save and review an expression across devices', async t => {
   await desktop.waitForFunction(() => document.getElementById('translation').textContent === 'out of date');
   const pushed = desktop.waitForResponse(response => response.url().endsWith('/api/reader-state') &&
     response.request().postDataJSON()?.records?.some(([key]) => key.startsWith('vocabulary:')));
+  const marked = () => desktop.evaluate(() => CSS.highlights.get('saved-expression')?.size ?? 0);
+  assert.equal(await marked(), 0);
   await desktop.getByRole('button', { name: 'Save expression' }).click();
+  // The saved expression is marked in the text at once, without waiting for a reload or sync.
+  assert.equal(await marked(), 1);
   await pushed;
   await phone.goto(url + '/vocabulary');
   await phone.getByText('stale', { exact: true }).tap();

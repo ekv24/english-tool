@@ -328,6 +328,7 @@ save?.addEventListener('click', () => {
     }
     updateSave(true);
     updateSavedNote();
+    highlightSaved();
   } catch {
     save.textContent = 'Try saving again';
   }
