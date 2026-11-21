@@ -178,15 +178,26 @@ const server = createServer(async (req, res) => {
         const directory = await libraryDirectory('articles', id);
         return directory ? loadArticle(directory, id) : null;
       }))).filter(material => material !== null);
-      const cards = materials.map(({ id, title, publisher, kind, date, previewMedia }, index) =>
-        '<a class="card" href="/read/' + escape(id) + '" data-material="' + escape(id) + '">' +
-        libraryImage('/read/' + id + '/media/', previewMedia, !books.length && index === 0) + '<div class="card-copy">' +
-        '<span class="meta">' + escape(publisher ?? 'Reading library') + ' · ' + escape(kind ?? 'Article') + '</span><h2 lang="en">' + escape(title) +
-        '</h2><span class="card-date">' + escape(date ?? '') + '</span></div><div class="card-progress">' +
-        '<span class="card-status">To read</span><progress max="100" value="0" aria-label="Reading progress"></progress></div></a>').join('');
-      return await sendPage(render('Library', '<main class="library"><h1>Library</h1>' +
-        books.map((book, index) => libraryBook(book, index === 0)).join('') +
-        (cards ? (books.length ? '<h2 class="library-section-heading">Articles</h2>' : '') + '<div class="cards">' + cards + '</div>' : '') +
+      const cards = materials.map(({ id, title, publisher, kind, date, previewMedia }) =>
+        '<a class="card article-tile" href="/read/' + escape(id) + '" data-material="' + escape(id) + '" data-state="new">' +
+        '<span class="article-thumb">' + (libraryImage('/read/' + id + '/media/', previewMedia) ||
+          '<span class="article-thumb-type" aria-hidden="true">' + escape(publisher ?? kind ?? 'Article') + '</span>') + '</span>' +
+        '<span class="card-copy"><span class="meta">' + escape(publisher ?? kind ?? 'Article') + (date ? ' · ' + escape(date) : '') + '</span>' +
+        '<h3 lang="en">' + escape(title) + '</h3></span>' +
+        '<span class="card-progress"><span class="card-status">To read</span>' +
+        '<progress max="100" value="0" aria-label="Reading progress"></progress></span></a>').join('');
+      const count = /** @param {number} n @param {string} one */ (n, one) => n + ' ' + one + (n === 1 ? '' : 's');
+      const summary = [books.length ? count(books.length, 'book') : '', materials.length ? count(materials.length, 'article') : '']
+        .filter(Boolean).join(' · ');
+      return await sendPage(render('Library', '<main class="library">' +
+        '<header class="library-head"><div><h1>Library</h1><p class="library-summary">' + summary + '</p></div>' +
+        '<a class="library-words" href="/vocabulary" data-library-words hidden></a></header>' +
+        '<section class="library-continue" aria-labelledby="continue-heading" data-continue hidden>' +
+        '<h2 class="library-label" id="continue-heading">Continue reading</h2><div class="continue-list" data-continue-list></div></section>' +
+        (books.length ? '<section class="library-section" aria-labelledby="books-heading"><h2 class="library-label" id="books-heading">Books</h2>' +
+          '<div class="shelf">' + books.map((book, index) => libraryBook(book, index < 6)).join('') + '</div></section>' : '') +
+        (cards ? '<section class="library-section" aria-labelledby="articles-heading"><h2 class="library-label" id="articles-heading">Articles</h2>' +
+          '<div class="article-grid">' + cards + '</div></section>' : '') +
         (!cards && !books.length ? '<p>Add a prepared article or book to your library.</p>' : '') +
         '</main>', 'library.js', vocabularyLink, books.length ? bookStyle : ''));
     }
@@ -405,7 +416,7 @@ const server = createServer(async (req, res) => {
       const tag = 'W/"' + libraryThumbnail + '-' + statTag + '"';
       if (revalidate(tag)) return;
       const thumbnail = await cachedTransfer(tag, () => sharp(fileURLToPath(file), { limitInputPixels: 32 * 1024 * 1024 })
-        .autoOrient().resize(320, 320, { fit: 'inside', withoutEnlargement: true }).webp({ quality: 78 }).toBuffer())
+        .autoOrient().resize(640, 640, { fit: 'inside', withoutEnlargement: true }).webp({ quality: 78 }).toBuffer())
         .catch(() => null);
       if (thumbnail) return finishTransfer(thumbnail, 'image/webp');
       res.removeHeader('ETag');

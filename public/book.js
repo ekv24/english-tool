@@ -41,6 +41,11 @@ function updateBook(container) {
 
   const recent = [...pages].filter(([, page]) => page.time > 0).sort(([, a], [, b]) => b.time - a.time)[0]?.[0] ?? '';
   const chapter = pages.get(recent);
+  // The library uses these to sort the shelf and to fill "Continue reading".
+  container.dataset.state = chapters.length && finished === chapters.length ? 'done' : chapter || finished ? 'reading' : 'new';
+  container.dataset.percent = String(percent);
+  container.dataset.time = String(chapter?.time ?? 0);
+  container.dataset.chapter = chapter?.title ?? '';
   for (const status of container.querySelectorAll('[data-book-status]')) {
     status.textContent = finished ? finished + ' of ' + chapters.length + ' chapters finished'
       : chapter ? 'In progress' : 'To read';

@@ -168,7 +168,7 @@ test('restores two positions from newly opened tabs and tracks documents indepen
   assert.equal(await firstProgress.evaluate(node => node.value), 99);
   assert.equal(await secondProgress.evaluate(node => node.value), secondBefore);
   await capture('04-library.png');
-  await page.getByRole('link', { name: /Harness design for long-running/ }).click();
+  await page.locator('.article-grid').getByRole('link', { name: /Harness design for long-running/ }).click();
   await page.waitForFunction(() => Math.abs(document.getElementById('scaling-to-full-stack-coding').getBoundingClientRect().top - 144) < 4);
 });
 

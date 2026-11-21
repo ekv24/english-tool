@@ -35,19 +35,37 @@ export function libraryBook(book, eager = false) {
   const count = book.items.filter(item => item.type === 'chapter').length;
   const path = bookPath(book.id);
   const start = book.items.find(item => item.type === 'chapter') ?? book.items[0];
-  return '<section class="library-books" aria-label="' + escape(book.title) + '" data-book="' + escape(book.id) + '">' +
-    '<a class="book-library-card" href="' + path + '" data-book-summary>' +
-    libraryImage(path + '/images/', book.cover, eager) +
-    '<div class="book-library-copy">' +
-    '<p class="book-library-meta">Book · ' + count + ' chapters</p><h2 class="book-library-title">' + escape(book.title) + '</h2>' +
-    '<p class="book-library-description">' + escape(book.author) + '</p></div>' +
-    '<div class="book-library-progress"><span class="card-status" data-book-status>To read</span>' +
-    '<progress max="100" value="0" aria-label="Book reading progress" data-book-progress></progress></div></a>' +
-    '<a class="book-library-resume" data-book-resume href="' + path + '/' + escape(start.slug) + '" hidden>Continue reading →</a>' +
-    '<div data-book-pages hidden>' + book.items.map(item => bookPageData(item)).join('') + '</div></section>';
+  const excerpt = / \(publisher excerpt\)$/i.test(book.title);
+  const title = book.title.replace(/ \(publisher excerpt\)$/i, '');
+  // The resume link sits on the cover, so every tile keeps the same height whatever its progress.
+  return '<article class="shelf-item" aria-label="' + escape(book.title) + '" data-book="' + escape(book.id) + '" data-state="new">' +
+    '<a class="shelf-link" href="' + path + '" data-book-summary>' +
+    '<span class="cover">' + libraryCover(path + '/images/', book.cover, title, book.author, eager) +
+    (excerpt ? '<span class="cover-badge">Excerpt</span>' : '') +
+    '<progress class="cover-progress" max="100" value="0" aria-label="Book reading progress" data-book-progress></progress></span>' +
+    '<span class="shelf-copy"><h3 class="shelf-title">' + escape(title) + '</h3>' +
+    '<span class="shelf-author">' + escape(book.author) + '</span>' +
+    '<span class="shelf-status"><span class="card-status" data-book-status>To read</span>' +
+    '<span class="shelf-count"> · ' + count + (count === 1 ? ' chapter' : ' chapters') + '</span></span></span></a>' +
+    '<a class="shelf-resume" data-book-resume href="' + path + '/' + escape(start.slug) + '" hidden>Continue reading →</a>' +
+    '<div data-book-pages hidden>' + book.items.map(item => bookPageData(item)).join('') + '</div></article>';
 }
 
-export const libraryThumbnail = 'library-v1';
+/**
+ * A cover of any shape on a book-shaped plate. A portrait cover fills the plate over a blurred
+ * copy of itself; a wide picture becomes the top of a typeset cover with the title and author.
+ * @param {string} base @param {string|undefined} file @param {string} title @param {string} author @param {boolean} eager
+ */
+function libraryCover(base, file, title, author, eager) {
+  const typeset = '<span class="cover-type" aria-hidden="true"><span class="cover-type-title">' + escape(title) +
+    '</span><span class="cover-type-author">' + escape(author) + '</span></span>';
+  const image = libraryImage(base, file, eager);
+  if (!image) return typeset;
+  return image.replace('class="library-image"', 'class="cover-blur" aria-hidden="true"') +
+    image.replace('class="library-image"', 'class="cover-image"') + typeset;
+}
+
+export const libraryThumbnail = 'library-v2';
 
 /** @param {string} base @param {string} [file] @param {boolean} [eager] */
 export function libraryImage(base, file, eager = false) {
