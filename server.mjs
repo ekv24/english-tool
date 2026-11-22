@@ -9,8 +9,8 @@ import { brotliCompress, constants, gzip } from 'node:zlib';
 import sharp from 'sharp';
 import { hasContextModel, hasLookupModel, matchCase, targetLanguage, translate, translateInContext, warmSentenceModel, warmTranslation } from './translation.mjs';
 import { assets, versionPage } from './assets.mjs';
-import { libraryDirectory, libraryIds, loadArticle, loadGlossary, originalFile, originalSource, readOptional, readQuiz } from './library.mjs';
-import { escape } from './html.mjs';
+import { libraryDirectory, loadArticle, loadArticles, loadGlossary, originalFile, originalSource, readOptional, readQuiz, wordsIn } from './library.mjs';
+import { escape, feedbackCard } from './html.mjs';
 import { syncReaderState } from './reader-state.mjs';
 import { bookLicense, bookOriginal, bookPath, loadBook, loadBooks, libraryBook, libraryImage, libraryThumbnail, bookOverview, bookTrail, bookContentsButton, chapterNav, originalUrl } from './book.mjs';
 
@@ -21,6 +21,8 @@ const mediaTypes = new Map(Object.entries({
   epub: 'application/epub+zip',
 }));
 const compressible = new Set(['text/css', 'text/javascript', 'image/svg+xml']);
+// Figures, covers and the bundled MathJax rarely change: reuse them for an hour, then refresh in the background.
+const mediaCache = 'private, max-age=3600, stale-while-revalidate=604800';
 const thumbnailTypes = new Set(['image/png', 'image/jpeg', 'image/webp', 'image/avif']);
 const maxCompressionBytes = 4 * 1024 * 1024;
 const gzipBody = promisify(gzip);
@@ -71,6 +73,22 @@ function encode(data, encoding) {
 }
 
 /** @typedef {{ question:string, answer:string, anchor:string }} Question */
+
+// Chromium-based browsers fetch a page when the pointer rests on its link or the finger touches it,
+// so moving between the library, a book and its chapters feels immediate. Others ignore the header.
+const speculationRules = JSON.stringify({
+  prefetch: [{
+    source: 'document',
+    where: { and: [
+      { href_matches: '/*' },
+      { not: { href_matches: '/api/*' } },
+      { not: { href_matches: '/*.(pdf|epub)' } },
+      { not: { href_matches: '/books/*/license' } },
+      { not: { selector_matches: '[target=_blank], [download]' } },
+    ] },
+    eagerness: 'moderate',
+  }],
+});
 
 // Runs before the first paint so a saved theme never flashes the other palette.
 const themeScript = "(()=>{const d=document.documentElement,k='english-tool-theme';try{const t=localStorage.getItem(k);" +
@@ -171,15 +189,19 @@ const server = createServer(async (req, res) => {
   }
   try {
     if (pathname === '/api/reader-state' && process.env.ENGLISH_TOOL_STATE_DB !== '') {
-      return await syncReaderState(req, res);
+      return await syncReaderState(req, res, sendJson);
     }
     if (req.method !== 'GET') return send(405, 'Method not allowed', 'text/plain');
+    if (pathname === '/speculation-rules.json') {
+      res.setHeader('Cache-Control', 'private, max-age=3600');
+      return send(200, speculationRules, 'application/speculationrules+json');
+    }
+    if (pathname === '/api/library') {
+      if (req.headers['sec-fetch-site'] === 'cross-site') return send(403, 'Forbidden', 'text/plain');
+      return await sendJson(JSON.stringify(await libraryCatalog()));
+    }
     if (pathname === '/') {
-      const [books, ids] = await Promise.all([loadBooks(), libraryIds('articles')]);
-      const materials = (await Promise.all(ids.map(async id => {
-        const directory = await libraryDirectory('articles', id);
-        return directory ? loadArticle(directory, id) : null;
-      }))).filter(material => material !== null);
+      const [books, materials] = await Promise.all([loadBooks(), loadArticles()]);
       const cards = materials.map(({ id, title, publisher, kind, date, previewMedia }) =>
         '<a class="card article-tile" href="/read/' + escape(id) + '" data-material="' + escape(id) + '" data-state="new">' +
         '<span class="article-thumb">' + (libraryImage('/read/' + id + '/media/', previewMedia) ||
@@ -196,6 +218,8 @@ const server = createServer(async (req, res) => {
         '<a class="library-words" href="/vocabulary" data-library-words hidden></a></header>' +
         '<section class="library-continue" aria-labelledby="continue-heading" data-continue hidden>' +
         '<h2 class="library-label" id="continue-heading">Continue reading</h2><div class="continue-list" data-continue-list></div></section>' +
+        '<section class="library-suggestions" aria-labelledby="suggestions-heading" data-suggestions hidden>' +
+        '<h2 class="library-label" id="suggestions-heading">For you</h2><div class="suggestion-list" data-suggestion-list></div></section>' +
         (books.length ? '<section class="library-section" aria-labelledby="books-heading"><h2 class="library-label" id="books-heading">Books</h2>' +
           '<div class="shelf">' + books.map((book, index) => libraryBook(book, index < 6)).join('') + '</div></section>' : '') +
         (cards ? '<section class="library-section" aria-labelledby="articles-heading"><h2 class="library-label" id="articles-heading">Articles</h2>' +
@@ -268,11 +292,11 @@ const server = createServer(async (req, res) => {
         '<main class="reader book-reader" data-book="' + id + '" data-id="' + id + '/' + escape(item.slug) + '" data-lookup="' + path + '/lookup">' +
         readerRail(path, 'Book', 'On this page') + '<div class="reading-column">' + bookTrail(book, item) +
         '<article class="book-article article-content" id="article" lang="en">' + deferImages(body) + '</article><section class="end">' +
-        readingButton + renderQuiz(questions, item.type === 'appendix' ? 'Review questions' : 'Chapter quiz') + chapterNav(book, item) +
+        readingButton + renderQuiz(questions, item.type === 'appendix' ? 'Review questions' : 'Chapter quiz') + feedbackCard(book.id) + chapterNav(book, item) +
         '</section></div>' + figureDialog() + translationPopover +
         (questions.length ? '<button class="quiz-return" type="button" data-quiz-return hidden>← Back to quiz</button>' : '') +
         '</main>', 'book-reader.js',
-        originalLink(originalUrl(book, item), bookContentsButton()), bookStyle + (book.math && item.type !== 'intro' ? bookMath(path) : '')));
+        originalLink(originalUrl(book, item), bookContentsButton()), bookStyle + (book.math && /\bclass="(?:[^"]*\s)?math[\s"]/.test(body) ? bookMath(path) : '')));
     }
     const match = pathname.match(/^\/read\/([a-z0-9-]+)(?:\/(media\/[\w.-]+|lookup|original\.pdf))?$/);
     if (match) {
@@ -301,11 +325,11 @@ const server = createServer(async (req, res) => {
         '<div class="reading-column"><article id="article" lang="en"><header class="article-header"><p class="meta">' +
         [material.publisher, material.date].filter(Boolean).map(value => escape(value ?? '')).join(' · ') + '</p><h1>' + escape(material.title) + '</h1></header>' +
         deferImages(body) + '</article><section class="end">' +
-        readingButton + renderQuiz(questions, 'Article quiz') + '<a href="/">← Back to library</a></section></div>' +
+        readingButton + renderQuiz(questions, 'Article quiz') + feedbackCard(id) + '<a href="/">← Back to library</a></section></div>' +
         (compareFigures ? figureDialog(pdf ? 'Original' : 'Source rendering') : '') + translationPopover + '</main>', compareFigures ? 'book-reader.js' : 'reader.js',
         originalLink(original), compareFigures ? bookStyle : ''));
     }
-    if (/^\/(?:style\.css|book(?:-search)?\.css|vocabulary\.css|(?:reader|reader-records|sync|library|progress|book|book-math|book-reader|book-search|vocabulary|vocabulary-review)\.js|fonts\/[a-z-]+\.woff2)$/.test(pathname)) {
+    if (/^\/(?:style\.css|book(?:-search)?\.css|vocabulary\.css|(?:reader|reader-records|sync|library|progress|book|book-math|book-reader|book-search|vocabulary|vocabulary-review|feedback|activity)\.js|fonts\/[a-z-]+\.woff2)$/.test(pathname)) {
       return await assetResponse(pathname.slice(1));
     }
     send(404, 'Not found', 'text/plain');
@@ -322,12 +346,20 @@ const server = createServer(async (req, res) => {
   async function sendPage(data) {
     const found = await assets();
     res.setHeader('Content-Security-Policy', policy(' ' + found.importMapHash));
+    res.setHeader('Speculation-Rules', '"/speculation-rules.json"');
     const content = Buffer.from(versionPage(data, found));
     const tag = 'W/"' + hash('sha256', content, 'base64url') + '"';
     const encoding = negotiateEncoding(content.length);
     if (revalidate(tag)) return;
     const body = encoding ? await cachedTransfer(encoding + tag, () => encode(content, encoding)) : content;
     finishTransfer(body, 'text/html; charset=utf-8', encoding);
+  }
+
+  /** @param {string} json */
+  async function sendJson(json) {
+    const content = Buffer.from(json);
+    const encoding = negotiateEncoding(content.length);
+    finishTransfer(encoding ? await encode(content, encoding) : content, 'application/json; charset=utf-8', encoding);
   }
 
   /** @param {number} size */
@@ -337,9 +369,9 @@ const server = createServer(async (req, res) => {
     return contentEncoding(req.headers['accept-encoding']);
   }
 
-  /** @param {string} tag */
-  function revalidate(tag) {
-    res.setHeader('Cache-Control', 'private, no-cache');
+  /** @param {string} tag @param {string} [cache] */
+  function revalidate(tag, cache = 'private, no-cache') {
+    res.setHeader('Cache-Control', cache);
     res.setHeader('ETag', tag);
     const conditional = req.headers['if-none-match']?.trim();
     if (conditional !== '*' && !conditional?.match(/"[^"]*"/g)?.includes(tag.slice(2))) return false;
@@ -414,9 +446,10 @@ const server = createServer(async (req, res) => {
     if (!info?.isFile()) return send(404, 'Not found', 'text/plain');
     const size = info.size;
     const statTag = hash('sha256', [info.dev, info.ino, size, info.mtimeMs, info.ctimeMs].join(':'), 'base64url');
+    const cache = /^(?:image|font|video)\/|^text\/javascript$/.test(type) ? mediaCache : undefined;
     if (libraryMedia && thumbnailTypes.has(type) && url.searchParams.get('thumbnail') === libraryThumbnail) {
       const tag = 'W/"' + libraryThumbnail + '-' + statTag + '"';
-      if (revalidate(tag)) return;
+      if (revalidate(tag, cache)) return;
       const thumbnail = await cachedTransfer(tag, () => sharp(fileURLToPath(file), { limitInputPixels: 32 * 1024 * 1024 })
         .autoOrient().resize(640, 640, { fit: 'inside', withoutEnlargement: true }).webp({ quality: 78 }).toBuffer())
         .catch(() => null);
@@ -435,7 +468,7 @@ const server = createServer(async (req, res) => {
     if (!partial && type !== 'application/pdf' && type !== 'application/epub+zip' && type !== 'text/plain') {
       const tag = 'W/"' + statTag + '"';
       const encoding = compressible.has(type) ? negotiateEncoding(size) : null;
-      if (revalidate(tag)) return;
+      if (revalidate(tag, cache)) return;
       if (encoding) {
         const body = await cachedTransfer(encoding + tag, async () => encode(await readFile(file), encoding));
         return finishTransfer(body, type, encoding);
@@ -458,6 +491,21 @@ function deferImages(body) {
     const decoding = /\sdecoding\s*=/i.test(tag) ? '' : ' decoding="async"';
     return '<img' + loading + decoding + tag.slice(4);
   });
+}
+
+/** What agents need to know about the library: titles, sources and lengths, without any reader data. */
+async function libraryCatalog() {
+  const [books, articles] = await Promise.all([loadBooks(), loadArticles()]);
+  return {
+    articles: await Promise.all(articles.map(async ({ id, title, publisher, kind, date, source }) => {
+      const directory = await libraryDirectory('articles', id);
+      return { id, title, publisher, kind, date, source, words: directory ? await wordsIn(new URL('article.html', directory)) : 0 };
+    })),
+    books: books.map(({ id, title, author, description, source, items }) => ({
+      id, title, author, description, source,
+      pages: items.map(({ slug, title, type, words }) => ({ slug, title, type, words })),
+    })),
+  };
 }
 
 /** @param {string} href @param {string} back @param {string} outline */

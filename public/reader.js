@@ -1,3 +1,5 @@
+import { countLookup, trackReading } from './activity.js';
+import './feedback.js';
 import { loadPosition, savePosition, setRead } from './progress.js';
 import { expressionKey } from './reader-records.js';
 import { stateRecords, stateValue, storeState, syncReaderState } from './sync.js';
@@ -70,6 +72,22 @@ const peeking = Boolean(initialHash) && (() => {
   catch { return false; }
 })();
 const initialSync = syncReaderState();
+if (!peeking) trackReading(documentId);
+
+// A thin bar under the top bar shows how far through the text the reader is.
+const progressBar = document.createElement('div');
+progressBar.className = 'reading-progress';
+progressBar.setAttribute('aria-hidden', 'true');
+progressBar.append(document.createElement('span'));
+document.querySelector('.topbar')?.append(progressBar);
+function updateProgressBar() {
+  const box = article.getBoundingClientRect();
+  const span = box.height - innerHeight;
+  const share = span > 0 ? Math.min(1, Math.max(0, -box.top / span)) : 1;
+  progressBar.style.setProperty('--read', share.toFixed(4));
+}
+updateProgressBar();
+window.addEventListener('resize', updateProgressBar);
 window.addEventListener('pageshow', async () => {
   await Promise.all([
     Promise.race([initialSync, new Promise(resolve => setTimeout(resolve, 1200))]),
@@ -108,6 +126,7 @@ function restore() {
   lastScrollY = scrollY;
   restoring = false;
   updateOutline();
+  updateProgressBar();
 }
 
 function updateOutline() {
@@ -154,6 +173,7 @@ window.addEventListener('scroll', () => {
     scrollFrame = 0;
     saveReadingPosition();
     updateOutline();
+    updateProgressBar();
   });
 }, { passive: true });
 window.addEventListener('pagehide', saveReadingPosition, { capture: true });
@@ -596,6 +616,7 @@ function openLookup(range) {
   explain.hidden = true;
   lookup.hidden = false;
   placeLookup();
+  countLookup();
   void fetchLookup(text);
 }
 

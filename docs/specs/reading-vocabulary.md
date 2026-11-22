@@ -73,6 +73,7 @@ Triage: ready-for-agent
 - [№11 — Синхронизировать чтение и словарь](../../.scratch/reading-vocabulary/issues/11-sync-reading-and-vocabulary.md).
 - [Исследование интервального повторения и отбора слов](../research/vocabulary-review.md).
 - [№12 — Повторять сохранённые выражения](../../.scratch/reading-vocabulary/issues/12-practice-saved-expressions.md).
+- [Рекомендации чтения: отзывы, сигналы чтения и подбор материалов](reading-recommendations.md).
 
 ## Книга Causal Inference for the Brave and True
 

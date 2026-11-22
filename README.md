@@ -1,6 +1,6 @@
 # English Tool
 
-English Tool is a self-hosted web reader for learning vocabulary from English articles and books at any level. Click a word or select a phrase to look it up in place. Save useful expressions with their original sentences, review them later, and return to the passage they came from. The library keeps your reading position and completion status, and optional quizzes let you check your understanding of a text. Progress, saved expressions and review sessions sync between the browsers and devices that open the same server, and the reader has a warm light theme and a dark theme.
+English Tool is a self-hosted web reader for learning vocabulary from English articles and books at any level. Click a word or select a phrase to look it up in place. Save useful expressions with their original sentences, review them later, and return to the passage they came from. The library keeps your reading position and completion status, and optional quizzes let you check your understanding of a text. Progress, saved expressions and review sessions sync between the browsers and devices that open the same server, and the reader has a warm light theme and a dark theme. After each text, **Your take** asks whether you want more like it and how hard the English was, and agents such as Claude Code or Codex can use those answers to suggest what to read next.
 
 ![English Tool library with the bundled book and article](docs/screenshots/library.png)
 
@@ -28,6 +28,20 @@ Click a word or select a phrase to open a lookup next to the text. The screensho
 ## Review saved expressions
 
 Open **Vocabulary** and choose **Start review** to practise up to five saved expressions at a time. The reader suggests technical terms from glossaries and expressions that recur across your library first. Use **Add to review** or **Exclude from review** on a saved expression to override the suggestion. Recall the meaning, choose **Show answer**, then **Remembered** or **Again**. Remembered expressions come back after a growing interval, and forgotten ones come back the next day. **Show context** shows the sentence you saved the expression from, and **Source passage** opens it in the text.
+
+## Tell it what you think, get suggestions
+
+At the end of every article and chapter, and on a book's page, **Your take** records your interest (**More like this**, **It was fine**, **Not for me**) and how hard the English was (**Easy**, **Just right**, **Hard**), with an optional note. While you read, the reader also counts active reading time and lookups for each text, a rough measure of its difficulty.
+
+`npm run interests` gives agents the same view through the running reader's API:
+
+```sh
+npm run interests -- digest                      # what you read, how it went, notes and suggestions
+npm run interests -- note "Loved the examples" --material cache-freshness --kind feedback
+npm run interests -- suggest --title "…" --url https://… --kind article --why "…" --score 0.7
+```
+
+Suggestions appear under **For you** in the library, where **Want to read** keeps one and **Not interested** hides it. All of this stays in the reader's database. [docs/agents/recommendations.md](docs/agents/recommendations.md) describes how agents log feedback from a chat and look for new materials (in Russian), and `.agents/skills/` holds the matching skills.
 
 ## Read on several devices
 
@@ -77,11 +91,12 @@ Russian notes on the author's own setup, with the preparation steps for the mate
 ## Repository layout
 
 - `server.mjs`, `library.mjs`, `book.mjs` and `translation.mjs` serve the reader. `assets.mjs` versions the files in `public/`, so browsers can cache them.
-- `reader-state.mjs`, `vocabulary-review.mjs` and `vocabulary-terms.mjs` keep the synced state and choose the expressions to review.
+- `reader-state.mjs`, `vocabulary-review.mjs` and `vocabulary-terms.mjs` keep the synced state and choose the expressions to review. `public/reader-records.js` defines every kind of record in that state.
+- `scripts/interests.mjs` is the command line for agents: digest, journal notes, suggestions and the interest profile.
 - `examples/` holds the bundled demo materials.
 - `materials/` holds glossaries, quizzes and metadata for the author's own library. See [companion files](docs/materials.md#companion-files-in-the-repository).
 - `scripts/` holds the importers used to prepare those materials. They write to `.local/`.
-- `docs/specs/`, `docs/research/` and `.scratch/` hold the original requirements, research notes and work items, in Russian.
+- `docs/specs/`, `docs/adr/`, `docs/research/`, `GLOSSARY.md` and `.scratch/` hold the requirements, decisions, research notes, terms and work items, in Russian.
 
 ## Checks
 

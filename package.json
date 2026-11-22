@@ -12,7 +12,8 @@
     "test:browser": "node --test test/*.browser.mjs",
     "prepare:articles": "node scripts/prepare-article.mjs effective-harnesses && node scripts/prepare-article.mjs harness-design",
     "prepare:model": "node translation.mjs --download-model",
-    "prepare:book": "node scripts/prepare-book.mjs"
+    "prepare:book": "node scripts/prepare-book.mjs",
+    "interests": "node scripts/interests.mjs"
   },
   "dependencies": {
     "@huggingface/transformers": "4.3.2",

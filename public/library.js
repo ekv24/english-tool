@@ -1,6 +1,8 @@
 import { loadPosition, percentLabel } from './progress.js';
-import { stateRecords } from './sync.js';
+import { stateRecords, storeState } from './sync.js';
 import './book.js';
+
+/** @typedef {import('./reader-records.js').Suggestion} Suggestion */
 
 const continueSection = /** @type {HTMLElement|null} */ (document.querySelector('[data-continue]'));
 const continueList = document.querySelector('[data-continue-list]');
@@ -114,19 +116,86 @@ function updateWords() {
   words.dataset.due = String(due);
 }
 
-// Wide pictures get a typeset cover instead of a letterbox; the shape is known once the image loads.
-for (const image of document.querySelectorAll('.cover-image')) {
-  if (!(image instanceof HTMLImageElement)) continue;
-  const mark = () => {
-    if (image.naturalWidth && image.naturalWidth / image.naturalHeight > .85) image.parentElement?.classList.add('is-wide');
-  };
-  if (image.complete) mark();
-  else image.addEventListener('load', mark, { once: true });
+const suggestionSection = /** @type {HTMLElement|null} */ (document.querySelector('[data-suggestions]'));
+const suggestionList = document.querySelector('[data-suggestion-list]');
+/** Suggestions hidden on this page stay as an "Undo" row until the page is reloaded. */
+const justDismissed = new Set();
+const levelNames = { easy: 'Easy English', right: 'Your level', hard: 'Hard English' };
+
+/** @param {string} id @param {import('./reader-records.js').Choice | null} choice */
+function choose(id, choice) {
+  if (choice === 'dismissed') justDismissed.add(id);
+  try { storeState('choice:' + id, choice); }
+  catch { /* The choice is shown again after a reload. */ }
+  updateSuggestions();
+}
+
+/** @param {string} id @param {Suggestion} suggestion @param {string|null|undefined} choice */
+function suggestionCard(id, suggestion, choice) {
+  const card = element('article', 'suggestion');
+  card.dataset.suggestion = id;
+  if (choice === 'dismissed') {
+    card.classList.add('is-dismissed');
+    const undo = /** @type {HTMLButtonElement} */ (element('button', 'suggestion-undo', 'Undo'));
+    undo.type = 'button';
+    undo.addEventListener('click', () => { justDismissed.delete(id); choose(id, null); });
+    card.append(element('span', 'suggestion-hidden', 'Hidden: ' + suggestion.title), undo);
+    return card;
+  }
+  const kind = suggestion.kind === 'book' ? 'Book' : 'Article';
+  const meta = [suggestion.author ?? suggestion.publisher, suggestion.minutes ? suggestion.minutes + ' min' : '',
+    suggestion.level ? levelNames[suggestion.level] : ''].filter(Boolean).join(' · ');
+  const head = element('p', 'suggestion-meta');
+  head.append(element('span', 'suggestion-kind', kind));
+  if (meta) head.append(' · ' + meta);
+  const title = element('h3', 'suggestion-title');
+  const link = /** @type {HTMLAnchorElement} */ (element('a', '', suggestion.title));
+  link.href = suggestion.url;
+  link.target = '_blank';
+  link.rel = 'noopener noreferrer';
+  link.lang = 'en';
+  title.append(link);
+  const want = /** @type {HTMLButtonElement} */ (element('button', 'suggestion-want', choice === 'want' ? '✓ Want to read' : 'Want to read'));
+  want.type = 'button';
+  want.setAttribute('aria-pressed', String(choice === 'want'));
+  want.addEventListener('click', () => choose(id, choice === 'want' ? null : 'want'));
+  const dismiss = /** @type {HTMLButtonElement} */ (element('button', 'suggestion-dismiss', 'Not interested'));
+  dismiss.type = 'button';
+  dismiss.addEventListener('click', () => choose(id, 'dismissed'));
+  const actions = element('div', 'suggestion-actions');
+  actions.append(want, dismiss);
+  card.append(head, title, element('p', 'suggestion-why', suggestion.why), actions);
+  if (choice === 'want') card.append(element('p', 'suggestion-next', 'Ask Claude or Codex to add it to your library.'));
+  return card;
+}
+
+let shownSuggestions = '';
+/** Agents write suggestions into the reader state; the reader keeps or hides them here. */
+function updateSuggestions() {
+  if (!suggestionSection || !suggestionList) return;
+  const shelf = new Set([...document.querySelectorAll('[data-material], [data-book]')]
+    .map(item => item.getAttribute('data-material') ?? item.getAttribute('data-book')));
+  /** @type {Map<string, unknown>} */
+  const choices = new Map(stateRecords('choice:').map(([key, , value]) => [key.slice('choice:'.length), value]));
+  const items = stateRecords('suggestion:').flatMap(([key, , value]) => {
+    if (!value || typeof value !== 'object' || !('url' in value)) return [];
+    const id = key.slice('suggestion:'.length);
+    const choice = /** @type {string|undefined} */ (choices.get(id) ?? undefined);
+    const hidden = (value.material && shelf.has(value.material)) || (choice === 'dismissed' && !justDismissed.has(id));
+    return hidden ? [] : [{ id, suggestion: /** @type {Suggestion} */ (value), choice }];
+  }).sort((a, b) => Number(b.choice === 'want') - Number(a.choice === 'want') || b.suggestion.score - a.suggestion.score)
+    .slice(0, 6);
+  const key = JSON.stringify(items);
+  if (key === shownSuggestions) return;
+  shownSuggestions = key;
+  suggestionList.replaceChildren(...items.map(({ id, suggestion, choice }) => suggestionCard(id, suggestion, choice)));
+  suggestionSection.hidden = items.length === 0;
 }
 
 function update() {
   updateArticles();
   updateContinue();
+  updateSuggestions();
   updateWords();
 }
 

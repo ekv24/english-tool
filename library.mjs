@@ -79,6 +79,32 @@ export async function loadArticle(directory, id) {
   return article?.id === id && typeof article.title === 'string' ? article : null;
 }
 
+/** All prepared articles, in id order. */
+export async function loadArticles() {
+  const ids = await libraryIds('articles');
+  const articles = await Promise.all(ids.map(async id => {
+    const directory = await libraryDirectory('articles', id);
+    return directory ? loadArticle(directory, id) : null;
+  }));
+  return articles.filter(article => article !== null);
+}
+
+/** @type {Map<string,{mtimeMs:number,words:number}>} */
+const pageWords = new Map();
+
+/** Counts the words of a prepared page, so progress and reading estimates match its length. @param {URL} file */
+export async function wordsIn(file) {
+  try {
+    const { mtimeMs } = await stat(file);
+    const cached = pageWords.get(file.href);
+    if (cached?.mtimeMs === mtimeMs) return cached.words;
+    const text = (await readFile(file, 'utf8')).replace(/<(script|style|svg|math)\b[\s\S]*?<\/\1>/gi, ' ').replace(/<[^>]*>/g, ' ');
+    const words = text.match(/\p{L}+/gu)?.length ?? 0;
+    pageWords.set(file.href, { mtimeMs, words });
+    return words;
+  } catch { return 0; }
+}
+
 /**
  * Finds a quiz next to the material or, failing that, in the companion folder.
  * @param {URL} directory @param {string} id @param {'articles'|'books'} kind

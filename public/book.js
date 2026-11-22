@@ -1,5 +1,6 @@
 import { loadPosition, percentLabel } from './progress.js';
 import './book-search.js';
+import './feedback.js';
 
 const startLinks = new Map([...document.querySelectorAll('a[data-book-resume]')].map(link => [
   link, { href: link.getAttribute('href') ?? '', label: link.textContent ?? '', hidden: link.hasAttribute('hidden') },
@@ -51,6 +52,12 @@ function updateBook(container) {
   container.dataset.percent = String(percent);
   container.dataset.time = String(chapter?.time ?? 0);
   container.dataset.chapter = chapter?.title ?? '';
+  const summary = container.querySelector('[data-book-progress-row]');
+  if (summary instanceof HTMLElement) {
+    summary.hidden = container.dataset.state === 'new';
+    const label = summary.querySelector('[data-book-percent]');
+    if (label) label.textContent = percentLabel(percent) + ' read' + (finished ? ' · ' + finished + ' of ' + chapters.length + ' chapters finished' : '');
+  }
   for (const status of container.querySelectorAll('[data-book-status]')) {
     status.textContent = finished ? finished + ' of ' + chapters.length + ' chapters finished'
       : chapter ? 'In progress' : 'To read';
@@ -80,6 +87,16 @@ document.querySelector('[data-open-book-contents]')?.addEventListener('click', (
   contents.showModal();
   contents.querySelector('a[aria-current="page"]')?.scrollIntoView({ block: 'nearest' });
 });
+
+// Wide pictures get a typeset cover instead of a letterbox; the shape is known once the image loads.
+for (const image of document.querySelectorAll('.cover-image')) {
+  if (!(image instanceof HTMLImageElement)) continue;
+  const mark = () => {
+    if (image.naturalWidth && image.naturalWidth / image.naturalHeight > .85) image.parentElement?.classList.add('is-wide');
+  };
+  if (image.complete) mark();
+  else image.addEventListener('load', mark, { once: true });
+}
 
 updateBooks();
 window.addEventListener('pageshow', updateBooks);

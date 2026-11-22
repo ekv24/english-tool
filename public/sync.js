@@ -1,4 +1,4 @@
-import { isReaderRecord } from './reader-records.js';
+import { isReaderRecord, recordSchema } from './reader-records.js';
 
 /** @typedef {import('./reader-records.js').ReaderRecord} ReaderRecord */
 /** @typedef {{record:ReaderRecord, pending?:boolean}} LocalRecord */
@@ -6,7 +6,16 @@ import { isReaderRecord } from './reader-records.js';
 
 const prefix = 'reader-state:v1:';
 const endpoint = '/api/reader-state';
+// The last server revision this browser has stored, so a new page asks only for what changed since.
+const revisionKey = 'reader-state:revision';
 let revision = 0;
+let epoch = '';
+try {
+  const saved = JSON.parse(localStorage.getItem(revisionKey) ?? 'null');
+  if (saved?.schema === recordSchema && Number.isSafeInteger(saved.revision) && typeof saved.epoch === 'string') {
+    ({ revision, epoch } = saved);
+  }
+} catch { /* Without storage every page fetches the whole state. */ }
 let timer = 0;
 /** @type {(() => boolean | object | undefined) | undefined} */
 let reviewRequest;
@@ -126,7 +135,8 @@ function requestBody(beacon = false) {
   const request = reviewRequest?.();
   const vocabulary = beacon && request === true ? undefined : request;
   const extra = vocabulary ? ',"vocabulary":' + JSON.stringify(vocabulary) : '';
-  return { body: '{"since":' + revision + ',"records":[' + batch.join(',') + ']' + extra + '}', size: size + extra.length, vocabulary };
+  const known = epoch ? ',"epoch":' + JSON.stringify(epoch) : '';
+  return { body: '{"since":' + revision + known + ',"records":[' + batch.join(',') + ']' + extra + '}', size: size + extra.length, vocabulary };
 }
 
 /** @param {ReaderRecord[]} records */
@@ -165,6 +175,9 @@ export function syncReaderState() {
       const data = await res.json();
       apply(data.records);
       revision = data.revision;
+      epoch = typeof data.epoch === 'string' ? data.epoch : '';
+      try { localStorage.setItem(revisionKey, JSON.stringify({ revision, epoch, schema: recordSchema })); }
+      catch { /* The next page fetches the whole state again. */ }
       if (data.vocabulary) {
         window.dispatchEvent(new CustomEvent('vocabularyreviewchange', { detail: { snapshot: data.vocabulary, request: vocabulary } }));
       }

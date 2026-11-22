@@ -1,4 +1,5 @@
 import { DatabaseSync } from 'node:sqlite';
+import { randomUUID } from 'node:crypto';
 import { mkdirSync } from 'node:fs';
 import { dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -16,15 +17,21 @@ const maxBytes = 512 * 1024;
 /** @param {string} filename */
 export function openReaderState(filename) {
   if (filename !== ':memory:') mkdirSync(dirname(filename), { recursive: true, mode: 0o700 });
-  const db = new DatabaseSync(filename);
+  // Another process, such as a backup, may briefly hold the lock.
+  const db = new DatabaseSync(filename, { timeout: 2000 });
   db.exec(`
     CREATE TABLE IF NOT EXISTS reader_state (
       revision INTEGER PRIMARY KEY AUTOINCREMENT,
       key TEXT UNIQUE NOT NULL,
       updated_at INTEGER NOT NULL,
       value TEXT NOT NULL
-    ) STRICT
+    ) STRICT;
+    CREATE TABLE IF NOT EXISTS reader_meta (key TEXT PRIMARY KEY, value TEXT NOT NULL) STRICT;
   `);
+  // Browsers remember the last revision they saw. A database restored from a backup gets a new epoch,
+  // so they fetch everything again instead of trusting revision numbers from another history.
+  db.prepare("INSERT OR IGNORE INTO reader_meta (key, value) VALUES ('epoch', ?)").run(randomUUID());
+  const epoch = String(db.prepare("SELECT value FROM reader_meta WHERE key = 'epoch'").get()?.value);
   const byKey = db.prepare('SELECT key, updated_at, value FROM reader_state WHERE key = ?');
   const version = db.prepare('SELECT coalesce(max(revision), 0) AS revision FROM reader_state');
   const changes = db.prepare('SELECT key, updated_at, value FROM reader_state WHERE revision > ?');
@@ -41,8 +48,12 @@ export function openReaderState(filename) {
     return [String(row.key), Number(row.updated_at), JSON.parse(String(row.value))];
   }
 
-  /** @param {number} since @param {ReaderRecord[]} incoming @param {VocabularyIndex} [index] @param {ReviewAction} [action] */
-  return function exchange(since, incoming, index, action) {
+  /**
+   * @param {number} since @param {ReaderRecord[]} incoming @param {VocabularyIndex} [index] @param {ReviewAction} [action]
+   * @param {string} [knownEpoch] the epoch the browser's `since` belongs to
+   */
+  return function exchange(since, incoming, index, action, knownEpoch) {
+    if (knownEpoch !== undefined && knownEpoch !== epoch) since = 0;
     db.exec('BEGIN IMMEDIATE');
     try {
       for (const [key, updatedAt, value] of incoming) {
@@ -57,7 +68,7 @@ export function openReaderState(filename) {
       // A review grade and the session cursor commit in the same transaction.
       const vocabulary = index ? review(index, action, Date.now()) : undefined;
       db.exec('COMMIT');
-      return { revision, records: [...records.values()], vocabulary };
+      return { revision, epoch, records: [...records.values()], vocabulary };
     } catch (error) {
       db.exec('ROLLBACK');
       throw error;
@@ -70,8 +81,11 @@ const statePath = process.env.ENGLISH_TOOL_STATE_DB ??
 /** @type {ReturnType<typeof openReaderState> | undefined} */
 let exchange;
 
-/** @param {import('node:http').IncomingMessage} req @param {import('node:http').ServerResponse} res */
-export async function syncReaderState(req, res) {
+/**
+ * @param {import('node:http').IncomingMessage} req @param {import('node:http').ServerResponse} res
+ * @param {(json: string) => unknown} [sendJson] sends a successful answer, for example compressed
+ */
+export async function syncReaderState(req, res, sendJson = json => res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' }).end(json)) {
   res.setHeader('Cache-Control', 'private, no-store');
   if (req.method !== 'POST') return res.writeHead(405, { Allow: 'POST' }).end();
   if (req.headers['sec-fetch-site'] === 'cross-site') return res.writeHead(403).end();
@@ -91,14 +105,15 @@ export async function syncReaderState(req, res) {
   let data;
   try { data = JSON.parse(Buffer.concat(chunks).toString('utf8')); }
   catch { return res.writeHead(400).end(); }
-  const { since, records, vocabulary } = data ?? {};
+  const { since, records, vocabulary, epoch } = data ?? {};
   if (!Number.isSafeInteger(since) || since < 0 || !Array.isArray(records) || !records.every(isReaderRecord) ||
-      (vocabulary !== undefined && vocabulary !== true && !isReviewAction(vocabulary))) {
+      (vocabulary !== undefined && vocabulary !== true && !isReviewAction(vocabulary)) ||
+      (epoch !== undefined && (typeof epoch !== 'string' || epoch.length > 64))) {
     return res.writeHead(400).end();
   }
 
   exchange ??= openReaderState(statePath);
   const index = vocabulary ? await vocabularyIndex() : undefined;
-  const result = exchange(since, records, index, vocabulary === true ? undefined : vocabulary);
-  return res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' }).end(JSON.stringify(result));
+  const result = exchange(since, records, index, vocabulary === true ? undefined : vocabulary, epoch);
+  return sendJson(JSON.stringify(result));
 }

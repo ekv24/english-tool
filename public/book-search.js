@@ -17,6 +17,8 @@ function initializeSearch(input) {
   /** @type {{row: HTMLLIElement, titleWords: string[]}[]} */
   const entries = [];
   for (const link of toc.querySelectorAll('a[data-page-title], a.book-entry')) {
+    // A part heading links its title page; the part stays visible while any of its entries match.
+    if (link.closest('.book-part-title')) continue;
     const row = link.closest('li');
     if (!(row instanceof HTMLLIElement)) continue;
     const title = link.getAttribute('data-page-title') ?? link.querySelector('.book-entry-title')?.textContent ?? '';

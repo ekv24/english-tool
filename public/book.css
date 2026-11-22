@@ -482,3 +482,41 @@ a.book-entry, .book-entry > a {
 .book-actions [data-resume-title] { color: var(--muted); font-size: 13px; }
 .book-actions [data-resume-title]:empty,
 .book-actions [data-resume-title]:not(:empty) + [data-book-status] { display: none; }
+
+/* The overview opens with the cover beside the title, and the book's progress once reading starts. */
+.book-overview .book-hero { display: flex; flex-direction: row-reverse; align-items: flex-start; gap: clamp(28px, 5vw, 64px); }
+.book-hero-cover { flex: 0 0 clamp(148px, 19vw, 196px); justify-self: stretch; container-type: inline-size; }
+.book-hero-copy { display: grid; flex: 1; justify-items: start; gap: 16px; min-width: 0; }
+.book-hero-head { display: grid; justify-items: start; gap: 16px; }
+.book-hero-progress {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: min(100%, 460px);
+  color: var(--muted);
+  font-size: 13px;
+  font-variant-numeric: tabular-nums;
+}
+.book-hero-progress progress { flex: 1; min-width: 80px; }
+.book-overview > .feedback { margin-top: 40px; }
+.book-part > h3.book-part-title { padding: 0; }
+.book-part-title > a {
+  display: flex;
+  align-items: baseline;
+  gap: clamp(8px, 1.5vw, 16px);
+  padding: 11px 12px 9px;
+  border-radius: 8px;
+  color: inherit;
+  text-decoration: none;
+}
+.book-part-title > a:hover { background: var(--sidebar); }
+.book-part-title .book-entry-title { font: inherit; }
+@media (max-width: 620px) {
+  .book-overview .book-hero { display: grid; grid-template-columns: 84px minmax(0, 1fr); align-items: center; gap: 16px 18px; }
+  .book-hero-copy { display: contents; }
+  .book-hero-cover { grid-row: 1; grid-column: 1; }
+  .book-hero-head { grid-row: 1; grid-column: 2; gap: 8px; }
+  .book-hero-copy > :not(.book-hero-head) { grid-column: 1 / -1; }
+  .book-hero-head h1 { font-size: clamp(30px, 8.5vw, 40px); }
+}
+.end > .feedback + .book-chapter-nav { margin-top: 24px; padding-top: 0; }

@@ -1,6 +1,5 @@
-import { readFile, stat } from 'node:fs/promises';
-import { escape } from './html.mjs';
-import { libraryDirectory, libraryIds, originalSource, readMetadata } from './library.mjs';
+import { escape, feedbackCard } from './html.mjs';
+import { libraryDirectory, libraryIds, originalSource, readMetadata, wordsIn } from './library.mjs';
 
 /** @param {string} id */
 export function bookPath(id) {
@@ -14,22 +13,6 @@ export function bookPath(id) {
  *   description?:string,copyright?:string,start?:string,startLabel?:string,license?:string,licenseName?:string,
  *   items:BookPage[],toc:BookPart[]}} Book
  */
-
-/** @type {Map<string,{mtimeMs:number,words:number}>} */
-const pageWords = new Map();
-
-/** Counts the words of a book page so its share of the book's progress matches its length. @param {URL} file */
-async function wordsIn(file) {
-  try {
-    const { mtimeMs } = await stat(file);
-    const cached = pageWords.get(file.href);
-    if (cached?.mtimeMs === mtimeMs) return cached.words;
-    const text = (await readFile(file, 'utf8')).replace(/<(script|style|svg|math)\b[\s\S]*?<\/\1>/gi, ' ').replace(/<[^>]*>/g, ' ');
-    const words = text.match(/\p{L}+/gu)?.length ?? 0;
-    pageWords.set(file.href, { mtimeMs, words });
-    return words;
-  } catch { return 0; }
-}
 
 /** @param {string} id @param {URL} directory @returns {Promise<Book|null>} */
 export async function loadBook(id, directory) {
@@ -108,13 +91,17 @@ export function bookOverview(book) {
   const path = bookPath(book.id);
   const start = book.items.find(item => item.slug === book.start) ?? book.items[0];
   const description = book.description;
+  const title = book.title.replace(/ \(publisher excerpt\)$/i, '');
   return '<main class="reading-column book-overview" data-book="' + escape(book.id) + '"><header class="book-hero">' +
-    '<p class="book-eyebrow">Book · ' + escape(book.author) + '</p><h1>' + escape(book.title) + '</h1>' +
+    '<span class="cover book-hero-cover">' + libraryCover(path + '/images/', book.cover, title, book.author, true) + '</span>' +
+    '<div class="book-hero-copy"><div class="book-hero-head"><p class="book-eyebrow">Book · ' + escape(book.author) + '</p><h1>' + escape(book.title) + '</h1></div>' +
     (description ? '<p class="book-description">' + escape(description) + '</p>' : '') +
+    '<div class="book-hero-progress" data-book-progress-row hidden><progress max="100" value="0" aria-label="Book reading progress" data-book-progress></progress>' +
+    '<span data-book-percent></span></div>' +
     '<div class="book-actions"><a class="book-primary" data-book-resume href="' + path + '/' + escape(start.slug) + '">' +
     escape(start.slug === book.start && book.startLabel ? book.startLabel : 'Start reading') + '</a>' +
-    '<span data-resume-title></span><span data-book-status aria-live="polite"></span></div></header>' +
-    '<h2 id="book-toc-heading">Contents</h2>' + bookSearch('overview-search') + bookContents(book) +
+    '<span data-resume-title></span><span data-book-status aria-live="polite"></span></div></div></header>' +
+    '<h2 id="book-toc-heading">Contents</h2>' + bookSearch('overview-search') + bookContents(book) + feedbackCard(book.id) +
     '<footer class="book-credit">By ' + escape(book.author) +
     (bookLicense(book) ? ' · <a href="' + path + '/license">' + escape(book.licenseName ?? 'License') + '</a>'
       : book.copyright ? ' · ' + escape(book.copyright) : '') + '</footer></main>';
@@ -129,24 +116,38 @@ export function bookLicense(book) {
 export function bookContents(book, current) {
   const intro = book.items[0];
   const items = new Map(book.items.map(item => [item.slug, item]));
+  /** @param {string} title */
+  const plain = title => title.toLowerCase().replace(/[^\p{L}\p{N}]+/gu, '');
   return '<nav class="book-toc" aria-label="Book contents"><ul>' + entryLink(intro) +
-    book.toc.map(part => '<li class="book-part"><h3>' + escape(part.title) + '</h3><ul>' + part.entries.map(entry => {
-      if ('href' in entry) return '<li><a class="book-entry" href="' + escape(entry.href) + '" target="_blank" rel="noopener noreferrer">' +
-        '<span class="book-entry-title">' + escape(entry.title) + ' ↗</span></a></li>';
-      const item = items.get(entry.slug);
-      return item ? entryLink(item) : '';
-    }).join('') + '</ul></li>').join('') +
+    book.toc.map(part => {
+      // A part that opens with its own title page links that page from its heading instead of listing it twice.
+      const [first] = part.entries;
+      const opener = first && 'slug' in first ? items.get(first.slug) : undefined;
+      const merged = opener && opener !== intro && plain(opener.title) === plain(part.title) ? opener : undefined;
+      const heading = merged ? '<h3 class="book-part-title">' + pageLink(merged, '<span class="book-entry-title">' + escape(part.title) + '</span>') + '</h3>'
+        : '<h3>' + escape(part.title) + '</h3>';
+      return '<li class="book-part">' + heading + '<ul>' + part.entries.slice(merged ? 1 : 0).map(entry => {
+        if ('href' in entry) return '<li><a class="book-entry" href="' + escape(entry.href) + '" target="_blank" rel="noopener noreferrer">' +
+          '<span class="book-entry-title">' + escape(entry.title) + ' ↗</span></a></li>';
+        const item = items.get(entry.slug);
+        return item ? entryLink(item) : '';
+      }).join('') + '</ul></li>';
+    }).join('') +
     '</ul></nav>';
 
   /** @param {BookPage} item */
   function entryLink(item) {
+    return '<li class="book-entry">' + pageLink(item, (item.number ? '<span class="book-entry-number">' + escape(item.number) + '</span>' : '') +
+      '<span class="book-entry-title">' + escape(item.number ? item.title.slice(item.number.length + 3) : item.title) + '</span>') + '</li>';
+  }
+
+  /** @param {BookPage} item @param {string} content */
+  function pageLink(item, content) {
     const currentPage = item.slug === current?.slug ? ' aria-current="page"' : '';
-    return '<li class="book-entry"><a href="' + bookPath(book.id) + '/' + escape(item.slug) + '"' + currentPage +
+    return '<a href="' + bookPath(book.id) + '/' + escape(item.slug) + '"' + currentPage +
       ' data-book-page="' + escape(item.slug) + '" data-page-type="' + escape(item.type) + '" data-page-title="' + escape(item.title) + '"' +
-      ' data-page-words="' + (item.words ?? 0) + '" aria-label="' + escape(item.title) + '">' +
-      (item.number ? '<span class="book-entry-number">' + escape(item.number) + '</span>' : '') +
-      '<span class="book-entry-title">' + escape(item.number ? item.title.slice(item.number.length + 3) : item.title) + '</span>' +
-      '<span class="book-entry-progress" data-page-progress></span></a></li>';
+      ' data-page-words="' + (item.words ?? 0) + '" aria-label="' + escape(item.title) + '">' + content +
+      '<span class="book-entry-progress" data-page-progress></span></a>';
   }
 }
 
