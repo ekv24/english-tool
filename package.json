@@ -14,7 +14,8 @@
     "prepare:model": "node translation.mjs --download-model",
     "prepare:book": "node scripts/prepare-book.mjs",
     "interests": "node scripts/interests.mjs",
-    "check-vocabulary": "node scripts/check-vocabulary.mjs"
+    "check-vocabulary": "node scripts/check-vocabulary.mjs",
+    "vocabulary-audio": "node scripts/vocabulary-audio.mjs"
   },
   "dependencies": {
     "@huggingface/transformers": "4.3.2",

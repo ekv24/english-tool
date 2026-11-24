@@ -161,6 +161,24 @@
   background: var(--tint);
 }
 
+.listen {
+  margin: 0 0 12px;
+  padding: 12px 12px 12px 16px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: var(--panel);
+}
+.listen-head { display: flex; align-items: center; justify-content: space-between; gap: 16px; }
+.listen h2 { margin: 0; font: 600 16px/1.35 var(--sans); }
+.listen-head p, .listen-status { margin: 2px 0 0; color: var(--muted); font-size: 14px; }
+.listen-status:empty { display: none; }
+.listen-player { padding: 20px 4px 4px 0; text-align: center; }
+.listen-word { margin: 0; font: 400 clamp(26px, 6vw, 38px)/1.2 var(--serif); letter-spacing: -.02em; }
+/* Two lines stay reserved, so the buttons do not move when the translation appears. */
+.listen-translation { min-height: 2.8em; margin: 6px 0 12px; color: var(--muted); font-size: 18px; line-height: 1.4; }
+.listen-controls { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; max-width: 420px; margin-inline: auto; }
+.listen-controls button { min-height: 48px; }
+
 .review-launch p {
   margin: 0;
   color: var(--muted);

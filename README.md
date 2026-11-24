@@ -31,6 +31,8 @@ Open **Vocabulary** and choose **Start review** to practise up to five saved exp
 
 Machine translations of single words are often wrong in context. If you use the Codex CLI, `npm run check-vocabulary` has it check newly saved expressions against their sentences and correct them, keeping their review history ([details, in Russian](docs/agents/vocabulary-check.md)).
 
+On a Mac with Apple Silicon, **Listen** in Vocabulary can play your expressions in a loop: the word, a pause to recall it, the translation. The speech is made on your computer and plays without a connection. Words come up less often the longer you have heard them ([setup, in Russian](docs/agents/vocabulary-audio.md)).
+
 ## Tell it what you think, get suggestions
 
 At the end of every article and chapter, and on a book's page, **Your take** records your interest (**More like this**, **It was fine**, **Not for me**) and how hard the English was (**Easy**, **Just right**, **Hard**), with an optional note. While you read, the reader also counts active reading time and lookups for each text, a rough measure of its difficulty.

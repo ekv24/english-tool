@@ -9,14 +9,14 @@ import { brotliCompress, constants, gzip } from 'node:zlib';
 import sharp from 'sharp';
 import { hasContextModel, hasLookupModel, matchCase, targetLanguage, translate, translateInContext, warmSentenceModel, warmTranslation } from './translation.mjs';
 import { assets, versionPage } from './assets.mjs';
-import { libraryDirectory, loadArticle, loadArticles, loadGlossary, originalFile, originalSource, readOptional, readQuiz, wordsIn } from './library.mjs';
+import { dataRoot, libraryDirectory, loadArticle, loadArticles, loadGlossary, originalFile, originalSource, readOptional, readQuiz, wordsIn } from './library.mjs';
 import { escape, feedbackCard } from './html.mjs';
 import { syncReaderState } from './reader-state.mjs';
 import { bookLicense, bookOriginal, bookPath, loadBook, loadBooks, libraryBook, libraryImage, libraryThumbnail, bookOverview, bookTrail, bookContentsButton, chapterNav, originalUrl } from './book.mjs';
 
 const mediaTypes = new Map(Object.entries({
   css: 'text/css', js: 'text/javascript', gif: 'image/gif', png: 'image/png', jpg: 'image/jpeg',
-  jpeg: 'image/jpeg', webp: 'image/webp', mp4: 'video/mp4', woff2: 'font/woff2',
+  jpeg: 'image/jpeg', webp: 'image/webp', mp4: 'video/mp4', mp3: 'audio/mpeg', woff2: 'font/woff2',
   svg: 'image/svg+xml', avif: 'image/avif', woff: 'font/woff', txt: 'text/plain', pdf: 'application/pdf',
   epub: 'application/epub+zip',
 }));
@@ -174,7 +174,7 @@ function normalizeExpression(text) {
 
 /** @param {string} extraScripts */
 function policy(extraScripts) {
-  return "default-src 'self'; script-src 'self' " + themeHash + extraScripts + "; style-src 'self' 'unsafe-inline'; object-src 'none'; base-uri 'none'; frame-ancestors 'none'; form-action 'self'";
+  return "default-src 'self'; script-src 'self' " + themeHash + extraScripts + "; style-src 'self' 'unsafe-inline'; media-src 'self' blob: data:; object-src 'none'; base-uri 'none'; frame-ancestors 'none'; form-action 'self'";
 }
 
 const server = createServer(async (req, res) => {
@@ -196,6 +196,13 @@ const server = createServer(async (req, res) => {
       res.setHeader('Cache-Control', 'private, max-age=3600');
       return send(200, speculationRules, 'application/speculationrules+json');
     }
+    if (pathname === '/api/vocabulary-audio') {
+      if (req.headers['sec-fetch-site'] === 'cross-site') return send(403, 'Forbidden', 'text/plain');
+      const mix = await readOptional(new URL('speech/mix.json', dataRoot));
+      return mix ? sendJson(mix) : send(404, 'Not found', 'text/plain');
+    }
+    const mix = pathname.match(/^\/vocabulary-audio\/([a-f0-9]{16}\.mp3)$/);
+    if (mix) return await fileResponse(new URL('speech/' + mix[1], dataRoot), mix[1]);
     if (pathname === '/api/library') {
       if (req.headers['sec-fetch-site'] === 'cross-site') return send(403, 'Forbidden', 'text/plain');
       return await sendJson(JSON.stringify(await libraryCatalog()));
@@ -230,6 +237,16 @@ const server = createServer(async (req, res) => {
     if (pathname === '/vocabulary') {
       return await sendPage(render('Vocabulary', '<main class="vocabulary reading-column"><div data-vocabulary-home>' +
         '<h1>Vocabulary</h1><p data-word-count></p>' +
+        '<section class="listen" aria-label="Listen" hidden><div class="listen-head"><div>' +
+        '<h2>Listen</h2><p data-listen-summary></p></div>' +
+        '<button class="review-primary" data-listen-start type="button">Play</button></div>' +
+        '<div class="listen-player" data-listen-player hidden>' +
+        '<p class="listen-word" data-listen-word lang="en"></p>' +
+        '<p class="listen-translation" data-listen-translation lang="' + escape(targetLanguage) + '"></p>' +
+        '<div class="listen-controls"><button class="review-secondary" data-listen-previous type="button">Previous</button>' +
+        '<button class="review-primary" data-listen-toggle type="button">Pause</button>' +
+        '<button class="review-secondary" data-listen-next type="button">Next</button></div></div>' +
+        '<p class="listen-status" data-listen-status role="status"></p><audio loop preload="none"></audio></section>' +
         '<section class="review-launch" aria-label="Vocabulary review" hidden>' +
         '<p data-review-summary role="status"></p>' +
         '<button class="review-primary" data-review-start type="button">Start review</button></section>' +
@@ -329,7 +346,7 @@ const server = createServer(async (req, res) => {
         (compareFigures ? figureDialog(pdf ? 'Original' : 'Source rendering') : '') + translationPopover + '</main>', compareFigures ? 'book-reader.js' : 'reader.js',
         originalLink(original), compareFigures ? bookStyle : ''));
     }
-    if (/^\/(?:style\.css|book(?:-search)?\.css|vocabulary\.css|(?:reader|reader-records|sync|library|progress|book|book-math|book-reader|book-search|vocabulary|vocabulary-review|feedback|activity)\.js|fonts\/[a-z-]+\.woff2)$/.test(pathname)) {
+    if (/^\/(?:style\.css|book(?:-search)?\.css|vocabulary\.css|(?:reader|reader-records|sync|library|progress|book|book-math|book-reader|book-search|vocabulary|vocabulary-review|feedback|activity|listen)\.js|fonts\/[a-z-]+\.woff2)$/.test(pathname)) {
       return await assetResponse(pathname.slice(1));
     }
     send(404, 'Not found', 'text/plain');
@@ -446,7 +463,7 @@ const server = createServer(async (req, res) => {
     if (!info?.isFile()) return send(404, 'Not found', 'text/plain');
     const size = info.size;
     const statTag = hash('sha256', [info.dev, info.ino, size, info.mtimeMs, info.ctimeMs].join(':'), 'base64url');
-    const cache = /^(?:image|font|video)\/|^text\/javascript$/.test(type) ? mediaCache : undefined;
+    const cache = /^(?:image|font|video|audio)\/|^text\/javascript$/.test(type) ? mediaCache : undefined;
     if (libraryMedia && thumbnailTypes.has(type) && url.searchParams.get('thumbnail') === libraryThumbnail) {
       const tag = 'W/"' + libraryThumbnail + '-' + statTag + '"';
       if (revalidate(tag, cache)) return;

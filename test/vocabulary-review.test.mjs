@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import { openReaderState } from '../reader-state.mjs';
-import { isReviewAction, nextStage } from '../vocabulary-review.mjs';
+import { isReviewAction, listeningChance, nextStage } from '../vocabulary-review.mjs';
 import { expressionKey } from '../public/reader-records.js';
 
 const book = '/books/causal-inference/01-introduction-to-causality#bias';
@@ -151,4 +151,59 @@ test('rejects malformed checks', () => {
   for (const check of [{ key: 'note:x', translation: 'слово' }, { key: 'vocabulary:x', translation: ' ' }, { key: 'vocabulary:x', translation: 'слово', lemma: '' }, null]) {
     assert.equal(isReviewAction({ type: 'check', checks: [check] }), false, JSON.stringify(check));
   }
+});
+
+test('an expression is heard every day for a week, then less often, never below one day in ten', () => {
+  assert.deepEqual([0, 6, 7, 13, 14, 20, 21, 300].map(days => listeningChance(days)), [1, 1, 0.5, 0.5, 0.25, 0.25, 0.1, 0.1]);
+  // A long review interval lowers the chance at once; an expression reviewed again tomorrow keeps it.
+  assert.deepEqual([-1, 0, 1, 2, 3, 6].map(stage => listeningChance(0, stage)), [1, 1, 1 / 3, 1 / 7, 0.1, 0.1]);
+  assert.equal(listeningChance(14, 1), 0.25);
+});
+
+test('the listening set holds checked expressions, keeps unheard ones and grows by ten new ones a day', () => {
+  const exchange = openReaderState(':memory:');
+  const index = { pages: [], glossaries: new Map() };
+  const words = Array.from({ length: 60 }, (_, i) => record('word' + i, 'слово ' + i, '', book, 100 - i));
+  exchange(0, words, index, undefined);
+  const playlist = day => exchange(0, [], index, { type: 'playlist', day }).vocabulary.playlist.map(card => card.key);
+  const heard = (day, keys) => exchange(0, [], index, { type: 'heard', day, keys });
+  assert.deepEqual(playlist('2026-11-01'), []);
+
+  exchange(0, [], index, { type: 'check', checks: words.map(([key, , value]) => ({ key, translation: value.translation })) });
+  exchange(0, [], index, { type: 'preference', key: words[0][0], preference: 'exclude' });
+  const first = playlist('2026-11-02');
+  assert.deepEqual(first, words.slice(1, 21).map(([key]) => key));
+  assert.deepEqual(playlist('2026-11-02'), first);
+  // Nothing was heard, so the next day starts with the same expressions.
+  assert.deepEqual(playlist('2026-11-03').slice(0, 20), first);
+  heard('2026-11-03', first);
+  heard('2026-11-03', first);
+  const second = playlist('2026-11-04');
+  assert.equal(second.length, 30);
+  assert.deepEqual(second.slice(0, 20).sort(), [...first].sort());
+  for (const day of ['04', '05', '06', '07', '08']) heard('2026-11-' + day, first);
+  assert.equal(playlist('2026-11-09').filter(key => first.includes(key)).length, 20);
+  heard('2026-11-09', first);
+  // After seven days the first expressions are drawn by chance, and the set never exceeds forty.
+  const later = Array.from({ length: 8 }, (_, i) => playlist('2026-12-0' + (i + 1)));
+  assert.ok(later.every(set => set.length <= 40));
+  assert.ok(later.some(set => first.some(key => !set.includes(key))));
+});
+
+test('a forgotten expression is heard every day again, and a corrected one keeps its listening days', () => {
+  const exchange = openReaderState(':memory:');
+  const index = { pages: [], glossaries: new Map() };
+  const word = record('jagged', 'зажатый', 'Overall, uplift is jagged.', article);
+  exchange(0, [word], index, { type: 'preference', key: word[0], preference: 'include' });
+  const check = (key, translation) => exchange(0, [], index, { type: 'check', checks: [{ key, translation, lemma: 'jagged' }] });
+  check(word[0], 'зажатый');
+  for (let i = 1; i <= 25; i++) exchange(0, [], index, { type: 'heard', day: '2026-11-' + String(i).padStart(2, '0'), keys: [word[0]] });
+  check(word[0], 'неравномерный');
+  const days = () => Array.from({ length: 40 }, (_, i) => exchange(0, [], index, {
+    type: 'playlist', day: new Date(Date.UTC(2027, 0, 1) + i * day).toISOString().slice(0, 10),
+  }).vocabulary.playlist.length).reduce((sum, length) => sum + length, 0);
+  assert.ok(days() < 30);
+  const session = exchange(0, [], index, { type: 'start', after: null }).vocabulary.session;
+  exchange(0, [], index, { type: 'answer', id: session.id, step: 0, grade: 'again', answeredAt: Date.now() });
+  assert.equal(days() >= 39, true);
 });

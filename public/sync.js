@@ -188,6 +188,18 @@ export function syncReaderState() {
   return syncing;
 }
 
+/**
+ * Sends a vocabulary action of its own, outside the review's queue. Records wait for the next sync.
+ * @param {object} action
+ */
+export async function sendVocabularyAction(action) {
+  const res = await fetch(endpoint, {
+    method: 'POST', headers: { 'Content-Type': 'application/json' }, keepalive: true,
+    body: JSON.stringify({ since: revision, epoch, records: [], vocabulary: action }),
+  });
+  if (!res.ok) throw new Error('The reader answered ' + res.status);
+}
+
 export function scheduleSync() {
   if (!timer) timer = window.setTimeout(syncReaderState, 350);
 }

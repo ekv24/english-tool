@@ -15,4 +15,4 @@ npm run check-vocabulary -- --server <url>     # для опытов на коп
 
 Модель задаёт `--model` или `ENGLISH_TOOL_CHECK_MODEL`, путь к Codex — `ENGLISH_TOOL_CODEX`. Codex использует вход в ChatGPT на этом компьютере. Если проверка не удалась, выражения останутся непроверенными до следующего запуска.
 
-На рабочем Mac задачу запускает launchd, `local.english-tool.check-vocabulary`, каждый день в 7:00. Журнал исправлений — `.local/check-vocabulary.log` в каталоге рабочей копии. В журнале личные данные, в репозиторий его не копируй.
+На рабочем Mac задачу запускает launchd, `local.english-tool.check-vocabulary`, каждый день в 7:00, затем обновляет [запись для Listen](vocabulary-audio.md). Журнал исправлений — `.local/check-vocabulary.log` в каталоге рабочей копии. В журнале личные данные, в репозиторий его не копируй.

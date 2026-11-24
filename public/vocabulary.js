@@ -1,6 +1,7 @@
 import { expressionKey } from './reader-records.js';
 import { readerSyncStatus, stateRecords, storeState } from './sync.js';
 import { initReview } from './vocabulary-review.js';
+import './listen.js';
 
 /** @typedef {import('./reader-records.js').SavedExpression} SavedExpression */
 

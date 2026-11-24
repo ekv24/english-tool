@@ -10,11 +10,15 @@ import { expressionKey, isReaderRecord } from './public/reader-records.js';
 /** @typedef {{id:string,lemma:string,expression:SavedExpression,showContext:boolean,priority:number,spread:number,sourceKey:string}} Card */
 /** @typedef {{id:string,queue:Card[],step:number}} Session */
 /** A saved expression after its translation was checked against its sentence. @typedef {{key:string,translation:string,lemma?:string}} Check */
-/** @typedef {{type:'start', after:string|null} | {type:'answer', id:string, step:number, grade:Grade, answeredAt:number} | {type:'preference', key:string, preference:Preference} | {type:'check', checks:Check[]}} ReviewAction */
+/** @typedef {{type:'start', after:string|null} | {type:'answer', id:string, step:number, grade:Grade, answeredAt:number} | {type:'preference', key:string, preference:Preference} | {type:'check', checks:Check[]} | {type:'playlist', day:string} | {type:'heard', day:string, keys:string[]}} ReviewAction */
 
 const sessionSize = 5;
 const day = 86_400_000;
 const intervals = [1, 3, 7, 14, 30, 60, 120];
+// The day's listening set: how many expressions it holds, and how many of them may be new.
+const playlistSize = 40;
+const playlistStart = 20;
+const playlistNew = 10;
 const generalPhrases = new Set([
   'account for', 'as a result', 'as long as', 'at odds with', 'boil down to', 'break down',
   'bring about', 'carry out', 'come up with', 'cope with', 'cut down on', 'deal with',
@@ -41,6 +45,17 @@ export function nextStage(stage, lastReviewedAt, at, grade) {
   return Math.max(next, Math.min(survived, intervals.length - 1));
 }
 
+/**
+ * The chance that an expression is in the day's listening set. It falls with the number of days the
+ * expression was heard and with its review interval, and never below one in ten.
+ * @param {number} days @param {number} [stage] the review stage, when the expression was reviewed
+ */
+export function listeningChance(days, stage) {
+  const heard = days < 7 ? 1 : days < 14 ? 0.5 : days < 21 ? 0.25 : 0.1;
+  const reviewed = stage === undefined ? 1 : 1 / intervals[Math.max(0, stage)];
+  return Math.max(0.1, Math.min(heard, reviewed));
+}
+
 /** @param {Record<string, unknown>|undefined} check */
 const lemmaOf = check => typeof check?.lemma === 'string' ? check.lemma : undefined;
 
@@ -57,6 +72,11 @@ function isCheck(check) {
 /** @param {unknown} value @returns {value is ReviewAction} */
 export function isReviewAction(value) {
   if (!value || typeof value !== 'object' || !('type' in value)) return false;
+  if (value.type === 'playlist' || value.type === 'heard') {
+    if (!('day' in value) || typeof value.day !== 'string' || !/^\d{4}-\d{2}-\d{2}$/.test(value.day)) return false;
+    return value.type === 'playlist' || ('keys' in value && Array.isArray(value.keys) && value.keys.length <= 200 &&
+      value.keys.every(key => typeof key === 'string' && key.startsWith('vocabulary:')));
+  }
   if (value.type === 'check') return 'checks' in value && Array.isArray(value.checks) && value.checks.length <= 500 && value.checks.every(isCheck);
   if (value.type === 'start') return 'after' in value && (value.after === null ||
     (typeof value.after === 'string' && /^[a-f0-9-]{36}$/.test(value.after)));
@@ -94,6 +114,15 @@ export function createVocabularyReview(db) {
       previous TEXT NOT NULL,
       checked_at INTEGER NOT NULL
     ) STRICT;
+    CREATE TABLE IF NOT EXISTS vocabulary_listening (
+      id TEXT PRIMARY KEY,
+      days INTEGER NOT NULL,
+      last_day TEXT NOT NULL
+    ) STRICT;
+    CREATE TABLE IF NOT EXISTS vocabulary_playlists (
+      day TEXT PRIMARY KEY,
+      ids TEXT NOT NULL
+    ) STRICT;
   `);
   const saved = db.prepare("SELECT key, updated_at, value FROM reader_state WHERE key LIKE 'vocabulary:%' AND value <> 'null' ORDER BY updated_at DESC, key");
   const getSession = db.prepare('SELECT content FROM vocabulary_session WHERE slot = 1');
@@ -111,6 +140,16 @@ export function createVocabularyReview(db) {
   const deleteCheck = db.prepare('DELETE FROM vocabulary_checks WHERE key = ?');
   const copyReview = db.prepare('INSERT OR IGNORE INTO vocabulary_reviews SELECT ?, stage, last_reviewed_at, due_at FROM vocabulary_reviews WHERE id = ?');
   const copyPreference = db.prepare('INSERT OR IGNORE INTO vocabulary_preferences SELECT ?, preference FROM vocabulary_preferences WHERE id = ?');
+  const copyListening = db.prepare('INSERT OR IGNORE INTO vocabulary_listening SELECT ?, days, last_day FROM vocabulary_listening WHERE id = ?');
+  const getListening = db.prepare('SELECT id, days FROM vocabulary_listening');
+  const heard = db.prepare(`
+    INSERT INTO vocabulary_listening (id, days, last_day) VALUES (?, 1, ?)
+    ON CONFLICT (id) DO UPDATE SET days = days + 1, last_day = excluded.last_day WHERE excluded.last_day > last_day
+  `);
+  const forgetListening = db.prepare('DELETE FROM vocabulary_listening WHERE id = ?');
+  const getPlaylists = db.prepare('SELECT day, ids FROM vocabulary_playlists ORDER BY day DESC');
+  const savePlaylist = db.prepare('INSERT INTO vocabulary_playlists (day, ids) VALUES (?, ?)');
+  const deletePlaylists = db.prepare('DELETE FROM vocabulary_playlists WHERE day <> ?');
   /** @type {Map<string, {value:string, lemma:string|undefined, index:VocabularyIndex, term:ReturnType<typeof describeExpression>}>} */
   const terms = new Map();
 
@@ -145,12 +184,13 @@ export function createVocabularyReview(db) {
       if (after.id !== before.id) {
         copyReview.run(after.id, before.id);
         copyPreference.run(after.id, before.id);
+        copyListening.run(after.id, before.id);
       }
     }
   }
 
-  /** @param {VocabularyIndex} index @param {ReviewAction | undefined} action @param {number} now */
-  return function review(index, action, now) {
+  /** @param {VocabularyIndex} index @param {ReviewAction | undefined} action @param {number} now @param {() => number} [random] */
+  return function review(index, action, now, random = Math.random) {
     if (action?.type === 'check') applyChecks(index, action.checks, now);
     const checks = new Map(getChecks.all().map(row => [String(row.key), row]));
     const manual = new Map(preferences.all().map(row => [String(row.id), /** @type {Preference} */ (row.preference)]));
@@ -226,6 +266,8 @@ export function createVocabularyReview(db) {
         const stage = nextStage(Number(old?.stage ?? -1), Number(old?.last_reviewed_at ?? 0), at, action.grade);
         const due = at + intervals[Math.max(0, stage)] * day;
         saveReview.run(card.id, stage, at, due);
+        // A forgotten expression is heard every day again.
+        if (action.grade === 'again') forgetListening.run(card.id);
         info.set(card.id, { stage, last_reviewed_at: at, due_at: due });
         const row = ordered.find(item => item.card.id === card.id);
         if (row) row.dueAt = due;
@@ -246,6 +288,45 @@ export function createVocabularyReview(db) {
       saveSession.run(JSON.stringify(current));
     }
 
+    if (action?.type === 'heard') {
+      for (const id of new Set(action.keys.map(key => sourceTerms.get(key)?.id))) {
+        if (id) heard.run(id, action.day);
+      }
+    }
+    const playlist = action?.type === 'playlist' ? dayPlaylist(action.day) : undefined;
+
+    /** The same set all day; expressions that were not heard yet stay for the next day. @param {string} day */
+    function dayPlaylist(day) {
+      const rows = new Map(ordered.filter(row => checks.has(row.card.sourceKey)).map(row => [row.card.id, row]));
+      const [latest] = getPlaylists.all();
+      let ids = /** @type {string[]} */ (latest ? JSON.parse(String(latest.ids)) : []);
+      if (latest?.day !== day) {
+        const days = new Map(getListening.all().map(row => [String(row.id), Number(row.days)]));
+        const candidates = [...rows.values()].map(row => {
+          const { id } = row.card;
+          const stage = info.get(id)?.stage;
+          return { row, id, days: days.get(id) ?? 0, chance: listeningChance(days.get(id) ?? 0, stage === undefined ? undefined : Number(stage)) };
+        });
+        const started = candidates.filter(item => item.days && item.chance === 1).sort((a, b) => b.days - a.days);
+        const drawn = candidates.filter(item => item.chance < 1 && random() < item.chance);
+        const set = [...started, ...drawn].slice(0, playlistSize);
+        const waiting = new Set(ids);
+        const unheard = candidates.filter(item => !item.days && item.chance === 1)
+          .sort((a, b) => Number(waiting.has(b.id)) - Number(waiting.has(a.id)) || comparePriority(a.row, b.row));
+        const carried = unheard.filter(item => waiting.has(item.id)).length;
+        const room = Math.min(playlistSize - set.length, Math.max(playlistNew, playlistStart - set.length, carried));
+        ids = [...set, ...unheard.slice(0, room)].map(item => item.id);
+        if (latest) deletePlaylists.run(day);
+        savePlaylist.run(day, JSON.stringify(ids));
+      }
+      return ids.flatMap(id => {
+        const card = rows.get(id)?.card;
+        if (!card) return [];
+        const { text, translation, sentence } = card.expression;
+        return [{ key: card.sourceKey, lemma: card.lemma, text, translation, sentence }];
+      });
+    }
+
     const available = Math.min(sessionSize, due.length + fresh.length);
     const waiting = { due: due.length, fresh: fresh.length };
     const upcoming = ordered.reduce((date, row) => row.dueAt > now ? Math.min(date, row.dueAt) : date, Infinity);
@@ -256,7 +337,7 @@ export function createVocabularyReview(db) {
           lemma: card.lemma, expression: card.expression, showContext: card.showContext, sourceKey: card.sourceKey,
         })),
       },
-      available, waiting, nextDue: Number.isFinite(upcoming) ? upcoming : null,
+      playlist, available, waiting, nextDue: Number.isFinite(upcoming) ? upcoming : null,
       entries: Object.fromEntries([...sourceTerms].map(([key, term]) => [
         key, {
           lemma: term.lemma, preference: manual.get(term.id) ?? 'auto',
