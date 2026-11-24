@@ -1,6 +1,6 @@
 import { randomUUID } from 'node:crypto';
 import { describeExpression } from './vocabulary-terms.mjs';
-import { isReaderRecord } from './public/reader-records.js';
+import { expressionKey, isReaderRecord } from './public/reader-records.js';
 
 /** @typedef {import('./public/reader-records.js').SavedExpression} SavedExpression */
 /** @typedef {import('./public/reader-records.js').ReaderRecord} ReaderRecord */
@@ -9,7 +9,8 @@ import { isReaderRecord } from './public/reader-records.js';
 /** @typedef {'include'|'exclude'|'auto'} Preference */
 /** @typedef {{id:string,lemma:string,expression:SavedExpression,showContext:boolean,priority:number,spread:number,sourceKey:string}} Card */
 /** @typedef {{id:string,queue:Card[],step:number}} Session */
-/** @typedef {{type:'start', after:string|null} | {type:'answer', id:string, step:number, grade:Grade, answeredAt:number} | {type:'preference', key:string, preference:Preference}} ReviewAction */
+/** A saved expression after its translation was checked against its sentence. @typedef {{key:string,translation:string,lemma?:string}} Check */
+/** @typedef {{type:'start', after:string|null} | {type:'answer', id:string, step:number, grade:Grade, answeredAt:number} | {type:'preference', key:string, preference:Preference} | {type:'check', checks:Check[]}} ReviewAction */
 
 const sessionSize = 5;
 const day = 86_400_000;
@@ -40,9 +41,23 @@ export function nextStage(stage, lastReviewedAt, at, grade) {
   return Math.max(next, Math.min(survived, intervals.length - 1));
 }
 
+/** @param {Record<string, unknown>|undefined} check */
+const lemmaOf = check => typeof check?.lemma === 'string' ? check.lemma : undefined;
+
+/** @param {unknown} value @param {number} max */
+const isLine = (value, max) => typeof value === 'string' && value.length <= max && !!value.trim();
+
+/** @param {unknown} check */
+function isCheck(check) {
+  if (!check || typeof check !== 'object') return false;
+  const { key, translation, lemma } = /** @type {Record<string, unknown>} */ (check);
+  return typeof key === 'string' && key.startsWith('vocabulary:') && isLine(translation, 320) && (lemma === undefined || isLine(lemma, 160));
+}
+
 /** @param {unknown} value @returns {value is ReviewAction} */
 export function isReviewAction(value) {
   if (!value || typeof value !== 'object' || !('type' in value)) return false;
+  if (value.type === 'check') return 'checks' in value && Array.isArray(value.checks) && value.checks.length <= 500 && value.checks.every(isCheck);
   if (value.type === 'start') return 'after' in value && (value.after === null ||
     (typeof value.after === 'string' && /^[a-f0-9-]{36}$/.test(value.after)));
   if (value.type === 'answer' && 'id' in value && 'step' in value && 'grade' in value && 'answeredAt' in value) {
@@ -73,6 +88,12 @@ export function createVocabularyReview(db) {
       slot INTEGER PRIMARY KEY CHECK(slot = 1),
       content TEXT NOT NULL
     ) STRICT;
+    CREATE TABLE IF NOT EXISTS vocabulary_checks (
+      key TEXT PRIMARY KEY,
+      lemma TEXT,
+      previous TEXT NOT NULL,
+      checked_at INTEGER NOT NULL
+    ) STRICT;
   `);
   const saved = db.prepare("SELECT key, updated_at, value FROM reader_state WHERE key LIKE 'vocabulary:%' AND value <> 'null' ORDER BY updated_at DESC, key");
   const getSession = db.prepare('SELECT content FROM vocabulary_session WHERE slot = 1');
@@ -82,11 +103,56 @@ export function createVocabularyReview(db) {
   const preferences = db.prepare('SELECT id, preference FROM vocabulary_preferences');
   const setPreference = db.prepare('INSERT OR REPLACE INTO vocabulary_preferences (id, preference) VALUES (?, ?)');
   const deletePreference = db.prepare('DELETE FROM vocabulary_preferences WHERE id = ?');
-  /** @type {Map<string, {value:string, index:VocabularyIndex, term:ReturnType<typeof describeExpression>}>} */
+  const getSaved = db.prepare('SELECT updated_at, value FROM reader_state WHERE key = ?');
+  const putSaved = db.prepare('INSERT OR REPLACE INTO reader_state (key, updated_at, value) VALUES (?, ?, ?)');
+  const getChecks = db.prepare('SELECT key, lemma FROM vocabulary_checks');
+  const getCheck = db.prepare('SELECT lemma FROM vocabulary_checks WHERE key = ?');
+  const saveCheck = db.prepare('INSERT OR REPLACE INTO vocabulary_checks (key, lemma, previous, checked_at) VALUES (?, ?, ?, ?)');
+  const deleteCheck = db.prepare('DELETE FROM vocabulary_checks WHERE key = ?');
+  const copyReview = db.prepare('INSERT OR IGNORE INTO vocabulary_reviews SELECT ?, stage, last_reviewed_at, due_at FROM vocabulary_reviews WHERE id = ?');
+  const copyPreference = db.prepare('INSERT OR IGNORE INTO vocabulary_preferences SELECT ?, preference FROM vocabulary_preferences WHERE id = ?');
+  /** @type {Map<string, {value:string, lemma:string|undefined, index:VocabularyIndex, term:ReturnType<typeof describeExpression>}>} */
   const terms = new Map();
+
+  /**
+   * Stores checked translations and base forms. A record's key includes its translation, so a new
+   * translation is a new record; the review history and the reader's preference follow it.
+   * @param {VocabularyIndex} index @param {Check[]} checks @param {number} now
+   */
+  function applyChecks(index, checks, now) {
+    for (const { key, translation, lemma } of checks) {
+      const row = getSaved.get(key);
+      // The reader may have removed the expression while it was being checked.
+      const expression = row && /** @type {SavedExpression|null} */ (JSON.parse(String(row.value)));
+      if (!expression) continue;
+      const checked = { ...expression, translation: translation.trim() };
+      const newKey = expressionKey(checked);
+      const before = describeExpression(expression, index, lemmaOf(getCheck.get(key)));
+      if (newKey !== key) {
+        const at = Math.max(now, Number(row.updated_at) + 1);
+        putSaved.run(key, at, 'null');
+        deleteCheck.run(key);
+        const same = getSaved.get(newKey);
+        if (!same || same.value === 'null') {
+          putSaved.run(newKey, Math.max(at, Number(same?.updated_at ?? 0) + 1), JSON.stringify(checked));
+        }
+      } else if (checked.translation !== expression.translation) {
+        // Keys ignore case, so a change of case alone keeps the key.
+        putSaved.run(key, Math.max(now, Number(row.updated_at) + 1), JSON.stringify(checked));
+      }
+      saveCheck.run(newKey, lemma?.trim() ?? null, expression.translation, now);
+      const after = describeExpression(checked, index, lemma?.trim());
+      if (after.id !== before.id) {
+        copyReview.run(after.id, before.id);
+        copyPreference.run(after.id, before.id);
+      }
+    }
+  }
 
   /** @param {VocabularyIndex} index @param {ReviewAction | undefined} action @param {number} now */
   return function review(index, action, now) {
+    if (action?.type === 'check') applyChecks(index, action.checks, now);
+    const checks = new Map(getChecks.all().map(row => [String(row.key), row]));
     const manual = new Map(preferences.all().map(row => [String(row.id), /** @type {Preference} */ (row.preference)]));
     /** @type {Map<string, Card>} */
     const cards = new Map();
@@ -99,8 +165,10 @@ export function createVocabularyReview(db) {
       if (!isReaderRecord(record) || !record[2] || typeof record[2] !== 'object' || !('savedAt' in record[2])) continue;
       const expression = record[2];
       const cached = terms.get(key);
-      const term = cached?.value === value && cached.index === index ? cached.term : describeExpression(expression, index);
-      terms.set(key, { value, index, term });
+      const checkedLemma = lemmaOf(checks.get(key));
+      const term = cached?.value === value && cached.lemma === checkedLemma && cached.index === index
+        ? cached.term : describeExpression(expression, index, checkedLemma);
+      terms.set(key, { value, lemma: checkedLemma, index, term });
       sourceTerms.set(key, term);
       const priority = Math.max(term.priority, generalPhrases.has(term.lemma.toLowerCase()) ? 2 : 0);
       const previous = cards.get(term.id);
@@ -194,6 +262,7 @@ export function createVocabularyReview(db) {
           lemma: term.lemma, preference: manual.get(term.id) ?? 'auto',
           suggested: (cards.get(term.id)?.priority ?? 0) > 0,
           dueAt: Number(info.get(term.id)?.due_at ?? 0),
+          checked: checks.has(key),
         },
       ])),
     };

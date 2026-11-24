@@ -142,18 +142,21 @@ export async function vocabularyIndex() {
   return index;
 }
 
-/** @param {SavedExpression} entry @param {Awaited<ReturnType<typeof vocabularyIndex>>} index */
-export function describeExpression(entry, index) {
+/**
+ * @param {SavedExpression} entry @param {Awaited<ReturnType<typeof vocabularyIndex>>} index
+ * @param {string} [checkedLemma] the base form confirmed when the translation was checked
+ */
+export function describeExpression(entry, index, checkedLemma) {
   const fromPath = entry.href.split('#')[0];
   const source = fromPath.split('/')[2];
   const gloss = index.glossaries.get(source);
-  const proposed = baseForm(entry.text, entry.sentence);
+  const proposed = checkedLemma ?? baseForm(entry.text, entry.sentence);
   const originalGloss = gloss?.get(normalized(entry.text));
   const proposedGloss = gloss?.get(normalized(proposed));
   const usesGlossaryTranslation = originalGloss !== undefined && normalized(entry.translation) === normalized(originalGloss);
   const keepsGlossaryForm = originalGloss !== undefined && proposedGloss === undefined &&
     (entry.text.includes(' ') || usesGlossaryTranslation);
-  const lemma = keepsGlossaryForm ? entry.text : proposed;
+  const lemma = keepsGlossaryForm && checkedLemma === undefined ? entry.text : proposed;
   const translation = usesGlossaryTranslation && proposedGloss !== undefined ? proposedGloss : entry.translation;
   const isGlossaryTerm = !!(originalGloss || proposedGloss);
   const forms = [...new Set([entry.text, lemma].map(searchTokens).filter(words => words.length).map(pattern))];

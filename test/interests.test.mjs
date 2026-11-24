@@ -119,8 +119,8 @@ test('a browser that remembers its revision receives only newer records, compres
   assert.equal(second.encoding, 'br');
   const later = await exchange(url, { since: second.data.revision, epoch: first.data.epoch, records: [['note:last', now, { text: 'Last.', kind: 'note', source: 'agent', at: now }]] });
   assert.deepEqual(later.data.records.map(([key]) => key), ['note:last']);
-  // A revision from another database's history does not count: the browser gets everything.
-  const other = await exchange(url, { since: later.data.revision, epoch: 'another-database', records: [] });
+  // A revision from before the reader restarted, perhaps with a restored database, does not count: the browser gets everything.
+  const other = await exchange(url, { since: later.data.revision, epoch: 'an-earlier-start', records: [] });
   assert.equal(other.data.records.length, 13);
   assert.equal((await exchange(url, { since: 0, epoch: 7, records: [] })).status, 400);
   assert.equal((await exchange(url, { since: 0, records: [['suggestion:x', now, { title: 'X', url: 'ftp://x', kind: 'book', why: 'x', score: 1, addedAt: now }]] })).status, 400);

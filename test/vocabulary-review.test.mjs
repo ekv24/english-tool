@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import { openReaderState } from '../reader-state.mjs';
-import { nextStage } from '../vocabulary-review.mjs';
+import { isReviewAction, nextStage } from '../vocabulary-review.mjs';
 import { expressionKey } from '../public/reader-records.js';
 
 const book = '/books/causal-inference/01-introduction-to-causality#bias';
@@ -110,4 +110,45 @@ test('schedules reviews from the time that actually passed', () => {
   assert.equal(nextStage(0, day, 41 * day, 'remembered'), 4, 'a card recalled after 40 days keeps a 30-day interval');
   assert.equal(nextStage(6, day, 2 * day, 'again'), 0, 'a forgotten long-term card skips the extra one-day repeat');
   assert.equal(nextStage(1, day, 2 * day, 'again'), -1, 'a forgotten young card starts over');
+});
+
+test('a checked translation replaces the record and keeps its review history and preference', () => {
+  const exchange = openReaderState(':memory:');
+  const index = { pages: [], glossaries: new Map() };
+  const jagged = record('jagged', 'зажатый', 'Overall, uplift is jagged.', article);
+  const removed = record('rose', 'роза', 'The rate rose quickly.', article);
+  const state = exchange(0, [jagged, removed], index, { type: 'preference', key: jagged[0], preference: 'include' }).vocabulary;
+  assert.equal(state.entries[jagged[0]].checked, false);
+  const session = exchange(0, [], index, { type: 'start', after: null }).vocabulary.session;
+  const answeredAt = Date.now() - day;
+  exchange(0, [], index, { type: 'answer', id: session.id, step: 0, grade: 'remembered', answeredAt });
+  exchange(0, [[removed[0], 2, null]], index, undefined);
+
+  const since = exchange(0, []).revision;
+  const checks = [
+    { key: jagged[0], translation: 'неравномерный', lemma: 'jagged' },
+    { key: removed[0], translation: 'расти', lemma: 'rise' },
+  ];
+  const result = exchange(since, [], index, { type: 'check', checks });
+  const corrected = record('jagged', 'неравномерный', '', article)[0];
+  assert.deepEqual(result.records.map(([key, , value]) => [key, value?.translation ?? null]), [[jagged[0], null], [corrected, 'неравномерный']]);
+  assert.equal(exchange(result.revision, []).records.length, 0);
+  assert.deepEqual(Object.keys(result.vocabulary.entries), [corrected]);
+  assert.deepEqual(result.vocabulary.entries[corrected], {
+    lemma: 'jagged', preference: 'include', suggested: false, dueAt: answeredAt + day, checked: true,
+  });
+  // A change of case alone keeps the key.
+  exchange(0, [], index, { type: 'check', checks: [{ key: corrected, translation: 'Неравномерный', lemma: 'jagged' }] });
+  const recased = exchange(result.revision, []);
+  assert.deepEqual(recased.records.map(([key, , value]) => [key, value.translation]), [[corrected, 'Неравномерный']]);
+  // A repeated check of the old key changes nothing.
+  exchange(0, [], index, { type: 'check', checks: [checks[0]] });
+  assert.equal(exchange(recased.revision, []).records.length, 0);
+});
+
+test('rejects malformed checks', () => {
+  assert.equal(isReviewAction({ type: 'check', checks: [{ key: 'vocabulary:x', translation: 'слово' }] }), true);
+  for (const check of [{ key: 'note:x', translation: 'слово' }, { key: 'vocabulary:x', translation: ' ' }, { key: 'vocabulary:x', translation: 'слово', lemma: '' }, null]) {
+    assert.equal(isReviewAction({ type: 'check', checks: [check] }), false, JSON.stringify(check));
+  }
 });

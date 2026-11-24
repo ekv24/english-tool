@@ -26,12 +26,10 @@ export function openReaderState(filename) {
       updated_at INTEGER NOT NULL,
       value TEXT NOT NULL
     ) STRICT;
-    CREATE TABLE IF NOT EXISTS reader_meta (key TEXT PRIMARY KEY, value TEXT NOT NULL) STRICT;
   `);
-  // Browsers remember the last revision they saw. A database restored from a backup gets a new epoch,
-  // so they fetch everything again instead of trusting revision numbers from another history.
-  db.prepare("INSERT OR IGNORE INTO reader_meta (key, value) VALUES ('epoch', ?)").run(randomUUID());
-  const epoch = String(db.prepare("SELECT value FROM reader_meta WHERE key = 'epoch'").get()?.value);
+  // Browsers remember the last revision they saw. The database may have been restored from a backup while
+  // the reader was stopped, so every start is a new epoch and browsers then fetch everything once.
+  const epoch = randomUUID();
   const byKey = db.prepare('SELECT key, updated_at, value FROM reader_state WHERE key = ?');
   const version = db.prepare('SELECT coalesce(max(revision), 0) AS revision FROM reader_state');
   const changes = db.prepare('SELECT key, updated_at, value FROM reader_state WHERE revision > ?');
@@ -59,14 +57,14 @@ export function openReaderState(filename) {
       for (const [key, updatedAt, value] of incoming) {
         store.run(key, updatedAt, JSON.stringify(value), key, updatedAt);
       }
+      // A review grade and the session cursor commit in the same transaction. Checked translations add records.
+      const vocabulary = index ? review(index, action, Date.now()) : undefined;
       const revision = Number(version.get()?.revision);
       const records = new Map(changes.all(since <= revision ? since : 0).map(row => [String(row.key), entry(row)]));
       for (const [key] of incoming) {
         const row = byKey.get(key);
         if (row) records.set(key, entry(row));
       }
-      // A review grade and the session cursor commit in the same transaction.
-      const vocabulary = index ? review(index, action, Date.now()) : undefined;
       db.exec('COMMIT');
       return { revision, epoch, records: [...records.values()], vocabulary };
     } catch (error) {

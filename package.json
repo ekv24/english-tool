@@ -13,7 +13,8 @@
     "prepare:articles": "node scripts/prepare-article.mjs effective-harnesses && node scripts/prepare-article.mjs harness-design",
     "prepare:model": "node translation.mjs --download-model",
     "prepare:book": "node scripts/prepare-book.mjs",
-    "interests": "node scripts/interests.mjs"
+    "interests": "node scripts/interests.mjs",
+    "check-vocabulary": "node scripts/check-vocabulary.mjs"
   },
   "dependencies": {
     "@huggingface/transformers": "4.3.2",

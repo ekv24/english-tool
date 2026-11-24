@@ -9,5 +9,5 @@
     "module": "NodeNext",
     "lib": ["ES2023", "DOM", "DOM.Iterable"]
   },
-  "include": ["server.mjs", "translation.mjs", "assets.mjs", "public/*.js", "scripts/interests.mjs"]
+  "include": ["server.mjs", "translation.mjs", "assets.mjs", "public/*.js", "scripts/interests.mjs", "scripts/check-vocabulary.mjs"]
 }
