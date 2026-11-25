@@ -41,8 +41,9 @@ LISTENER_MODEL = 'mlx-community/whisper-large-v3-turbo-asr-fp16'
 VOICE_TEXT = 'Доброе утро! Давай повторим твои слова. Сначала послушай, попробуй вспомнить перевод, а потом я скажу ответ.'
 VOICE_DESIGN = ('Тёплый, мягкий голос молодой женщины около тридцати лет, носительница русского языка, московское произношение '
                 'без акцента, спокойный темп, бархатный тембр, очень чёткая дикция, студийный микрофон.')
-# The word, a pause to recall it, the translation, the word again. Seconds.
-RECALL, BEFORE_REPEAT, BETWEEN_CARDS = 2.5, 0.6, 1.4
+ENGLISH_SPEED = 0.85
+# The word, a pause to recall it, the translation, then both once more and a pause before the next card. Seconds.
+RECALL, BEFORE_REPEAT, BEFORE_LAST, BETWEEN_CARDS = 4.0, 1.5, 1.5, 3.0
 TARGET_SECONDS = 30 * 60
 ATTEMPTS = 6
 # Russian infinitives and reflexive verbs; a few nouns match too, which rarely changes the sound.
@@ -136,11 +137,11 @@ class English:
         if not phonemes:
             say(f'No pronunciation: {card["lemma"]}')
             return None
-        path = clip_path('en', ENGLISH_VOICE, phonemes)
+        path = clip_path('en', ENGLISH_VOICE, str(ENGLISH_SPEED), phonemes)
         if not path.exists():
             self.model = self.model or load(ENGLISH_MODEL)
             pipeline = self.model._get_pipeline('a')
-            results = list(pipeline.generate_from_tokens(phonemes + '.', ENGLISH_VOICE, speed=0.9))
+            results = list(pipeline.generate_from_tokens(phonemes + '.', ENGLISH_VOICE, speed=ENGLISH_SPEED))
             audio = tidy(samples(results))
             if audio is None or not 0.2 < len(audio) / RATE < 0.8 + 0.3 * len(card['lemma']):
                 say(f'Unusable English clip: {card["lemma"]}')
@@ -202,8 +203,8 @@ def read(path):
 
 def mix(spoken):
     """Repeats the set in a new order each time until the recording is long enough."""
-    lengths = [2 * len(en) + len(ru) for _, en, ru in spoken]
-    round_seconds = sum(lengths) / RATE + len(spoken) * (RECALL + BEFORE_REPEAT + BETWEEN_CARDS)
+    lengths = [2 * (len(en) + len(ru)) for _, en, ru in spoken]
+    round_seconds = sum(lengths) / RATE + len(spoken) * (RECALL + BEFORE_REPEAT + BEFORE_LAST + BETWEEN_CARDS)
     parts, segments, at, previous = [], [], 0, None
     for _ in range(max(1, round(TARGET_SECONDS / round_seconds))):
         order = random.sample(range(len(spoken)), len(spoken))
@@ -212,7 +213,7 @@ def mix(spoken):
         previous = order[-1]
         for index in order:
             _, en, ru = spoken[index]
-            pieces = [en, silence(RECALL), ru, silence(BEFORE_REPEAT), en, silence(BETWEEN_CARDS)]
+            pieces = [en, silence(RECALL), ru, silence(BEFORE_REPEAT), en, silence(BEFORE_LAST), ru, silence(BETWEEN_CARDS)]
             length = sum(map(len, pieces))
             answer = at + len(pieces[0]) + len(pieces[1])
             segments.append([round(at / RATE, 2), round(answer / RATE, 2), round((at + length) / RATE, 2), index])

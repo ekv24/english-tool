@@ -13,6 +13,8 @@ const { values: options } = parseArgs({
     directory: { type: 'string', default: fileURLToPath(new URL('speech/', dataRoot)) },
     python: { type: 'string' },
     day: { type: 'string' },
+    // Rebuilds the recording even when the expressions are the same, for example after a change of its format.
+    force: { type: 'boolean', default: false },
   },
 });
 const directory = options.directory.replace(/\/?$/, '/');
@@ -35,7 +37,7 @@ if (!cards.length) process.exit(0);
 const current = await readFile(directory + 'mix.json', 'utf8').then(JSON.parse, () => null);
 /** @param {{key:string,lemma:string}[]} list */
 const contents = list => JSON.stringify(list.map(card => [card.key, card.lemma]).sort());
-const ready = current && contents(current.cards) === contents(cards) && await access(directory + current.version + '.mp3').then(() => true, () => false);
+const ready = !options.force && current && contents(current.cards) === contents(cards) && await access(directory + current.version + '.mp3').then(() => true, () => false);
 if (ready) {
   console.log('The recording is up to date.');
   process.exit(0);

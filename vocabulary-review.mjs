@@ -18,7 +18,7 @@ const sessionSize = 20;
 const sessionNew = 10;
 const day = 86_400_000;
 const intervals = [1, 3, 7, 14, 30, 60, 120];
-// The day's listening set. Sixty expressions take about eight minutes, so half an hour plays each four times.
+// The day's listening set. Sixty expressions take about fifteen minutes, so half an hour plays each twice.
 const playlistSize = 60;
 const generalPhrases = new Set([
   'account for', 'as a result', 'as long as', 'at odds with', 'boil down to', 'break down',
