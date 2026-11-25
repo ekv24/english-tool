@@ -12,7 +12,10 @@ import { expressionKey, isReaderRecord } from './public/reader-records.js';
 /** A saved expression after its translation was checked against its sentence. @typedef {{key:string,translation:string,lemma?:string}} Check */
 /** @typedef {{type:'start', after:string|null} | {type:'answer', id:string, step:number, grade:Grade, answeredAt:number} | {type:'preference', key:string, preference:Preference} | {type:'check', checks:Check[]} | {type:'playlist', day:string} | {type:'heard', day:string, keys:string[]}} ReviewAction */
 
-const sessionSize = 5;
+// A round ends so the reader can stop; the next one starts at once. Every new expression comes back the
+// next day, so a round takes only some of them, however many are waiting.
+const sessionSize = 20;
+const sessionNew = 10;
 const day = 86_400_000;
 const intervals = [1, 3, 7, 14, 30, 60, 120];
 // The day's listening set: how many expressions it holds, and how many of them may be new.
@@ -280,10 +283,11 @@ export function createVocabularyReview(db) {
       .sort((a, b) => a.dueAt - b.dueAt || comparePriority(a, b));
     const fresh = ordered.filter(item => !item.dueAt && (item.preference === 'include' || item.card.priority > 0))
       .sort(comparePriority);
+    const round = () => [...due.slice(0, sessionSize), ...fresh.slice(0, Math.min(sessionNew, Math.max(0, sessionSize - due.length)))];
     if (action?.type === 'start' && (current?.id ?? null) === action.after &&
         (!current || current.step >= current.queue.length) && due.length + fresh.length) {
       current = {
-        id: randomUUID(), queue: [...due, ...fresh].slice(0, sessionSize).map(item => item.card), step: 0,
+        id: randomUUID(), queue: round().map(item => item.card), step: 0,
       };
       saveSession.run(JSON.stringify(current));
     }
@@ -327,7 +331,7 @@ export function createVocabularyReview(db) {
       });
     }
 
-    const available = Math.min(sessionSize, due.length + fresh.length);
+    const available = round().length;
     const waiting = { due: due.length, fresh: fresh.length };
     const upcoming = ordered.reduce((date, row) => row.dueAt > now ? Math.min(date, row.dueAt) : date, Infinity);
     return {

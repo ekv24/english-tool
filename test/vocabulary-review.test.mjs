@@ -53,7 +53,7 @@ test('reviews base forms with distinct senses and lets the reader opt into a rar
   assert.equal(replay.session.step, 1);
 });
 
-test('offers five cards after an absence, including when one thousand are due', () => {
+test('offers ten new cards at a time and twenty that are due, including when one thousand are', () => {
   const exchange = openReaderState(':memory:');
   const list = Array.from({ length: 1000 }, (_, i) => record('word ' + i, 'термин ' + i, '', book, i + 1));
   const index = { pages: [], glossaries: new Map() };
@@ -66,10 +66,10 @@ test('offers five cards after an absence, including when one thousand are due', 
     exchange(0, list);
     for (const [key] of list) exchange(0, [], index, { type: 'preference', key, preference: 'include' });
     let after = null;
-    for (let i = 0; i < 200; i++) {
+    for (let i = 0; i < 100; i++) {
       const session = exchange(0, [], index, { type: 'start', after }).vocabulary.session;
-      assert.equal(session.total, 5);
-      for (let step = 0; step < 5; step++) {
+      assert.equal(session.total, 10);
+      for (let step = 0; step < 10; step++) {
         exchange(0, [], index, { type: 'answer', id: session.id, step, grade: 'remembered', answeredAt: now });
       }
       after = session.id;
@@ -77,8 +77,8 @@ test('offers five cards after an absence, including when one thousand are due', 
     assert.equal(exchange(0, [], index).vocabulary.available, 0);
     now += 30 * day;
     const resumed = exchange(0, [], index, { type: 'start', after }).vocabulary;
-    assert.equal(resumed.session.total, 5);
-    assert.equal(resumed.available, 5);
+    assert.equal(resumed.session.total, 20);
+    assert.equal(resumed.available, 20);
     assert.equal(Object.values(resumed.entries).filter(entry => entry.dueAt < now).length, 1000);
     const earned = exchange(0, [], index, {
       type: 'answer', id: resumed.session.id, step: 0, grade: 'remembered', answeredAt: now,
@@ -90,6 +90,26 @@ test('offers five cards after an absence, including when one thousand are due', 
     }).vocabulary;
     assert.equal(forgotten.entries[resumed.session.queue[1].sourceKey].dueAt, now + day);
   } finally { Date.now = originalNow; }
+});
+
+test('a round puts due cards first and fills up with at most ten new ones', () => {
+  const exchange = openReaderState(':memory:');
+  const index = { pages: [], glossaries: new Map() };
+  const list = Array.from({ length: 40 }, (_, i) => record('word ' + i, 'термин ' + i, '', book, i + 1));
+  exchange(0, list);
+  for (const [key] of list) exchange(0, [], index, { type: 'preference', key, preference: 'include' });
+  const ago = Date.now() - 5 * day;
+  let session = exchange(0, [], index, { type: 'start', after: null }).vocabulary.session;
+  const answered = session.queue.map(card => card.lemma);
+  for (let step = 0; step < 10; step++) {
+    exchange(0, [], index, { type: 'answer', id: session.id, step, grade: step < 6 ? 'remembered' : 'again', answeredAt: ago });
+  }
+  const before = exchange(0, [], index).vocabulary;
+  assert.equal(before.available, 20);
+  session = exchange(0, [], index, { type: 'start', after: session.id }).vocabulary.session;
+  assert.equal(session.total, 20);
+  assert.deepEqual(session.queue.slice(0, 10).map(card => card.lemma).sort(), answered.sort());
+  assert.ok(session.queue.slice(10).every(card => !answered.includes(card.lemma)));
 });
 
 test('keeps the glossary form when a saved adjectival translation matches it', () => {

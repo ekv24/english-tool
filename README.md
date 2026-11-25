@@ -27,7 +27,7 @@ Click a word or select a phrase to open a lookup next to the text. The screensho
 
 ## Review saved expressions
 
-Open **Vocabulary** and choose **Start review** to practise up to five saved expressions at a time. The reader suggests technical terms from glossaries and expressions that recur across your library first. Use **Add to review** or **Exclude from review** on a saved expression to override the suggestion. Recall the meaning, choose **Show answer**, then **Remembered** or **Again**. Remembered expressions come back after a growing interval, and forgotten ones come back the next day. **Show context** shows the sentence you saved the expression from, and **Source passage** opens it in the text.
+Open **Vocabulary** and choose **Start review** to practise up to twenty saved expressions at a time, ten of them new,. The reader suggests technical terms from glossaries and expressions that recur across your library first. Use **Add to review** or **Exclude from review** on a saved expression to override the suggestion. Recall the meaning, choose **Show answer**, then **Remembered** or **Again**. Remembered expressions come back after a growing interval, and forgotten ones come back the next day. **Show context** shows the sentence you saved the expression from, and **Source passage** opens it in the text.
 
 Machine translations of single words are often wrong in context. If you use the Codex CLI, `npm run check-vocabulary` has it check newly saved expressions against their sentences and correct them, keeping their review history ([details, in Russian](docs/agents/vocabulary-check.md)).
 

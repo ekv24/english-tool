@@ -105,7 +105,7 @@ export function initReview(list) {
       if (error || waiting) copy = error || waiting;
       else if (card && session) copy = (session.total - session.step) + ' left';
       else if (available && snapshot?.waiting) {
-        // Show the whole backlog, not just the next round of five.
+        // Show the whole backlog, not just the next round.
         const { due, fresh } = snapshot.waiting;
         copy = [due ? due + ' to repeat' : '', fresh ? fresh + ' new' : ''].filter(Boolean).join(' · ');
       }
