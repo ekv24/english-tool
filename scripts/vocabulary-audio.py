@@ -43,7 +43,7 @@ VOICE_DESIGN = ('Тёплый, мягкий голос молодой женщи
                 'без акцента, спокойный темп, бархатный тембр, очень чёткая дикция, студийный микрофон.')
 # The word, a pause to recall it, the translation, the word again. Seconds.
 RECALL, BEFORE_REPEAT, BETWEEN_CARDS = 2.5, 0.6, 1.4
-TARGET_SECONDS = 28 * 60
+TARGET_SECONDS = 30 * 60
 ATTEMPTS = 6
 # Russian infinitives and reflexive verbs; a few nouns match too, which rarely changes the sound.
 VERB = re.compile(r'(?:[аяиеуоы]ть|ться|тся|ти|чь)$')

@@ -180,10 +180,10 @@ test('an expression is heard every day for a week, then less often, never below 
   assert.equal(listeningChance(14, 1), 0.25);
 });
 
-test('the listening set holds checked expressions, keeps unheard ones and grows by ten new ones a day', () => {
+test('the listening set holds sixty checked expressions and keeps the unheard ones', () => {
   const exchange = openReaderState(':memory:');
   const index = { pages: [], glossaries: new Map() };
-  const words = Array.from({ length: 60 }, (_, i) => record('word' + i, 'слово ' + i, '', book, 100 - i));
+  const words = Array.from({ length: 100 }, (_, i) => record('word' + i, 'слово ' + i, '', book, 200 - i));
   exchange(0, words, index, undefined);
   const playlist = day => exchange(0, [], index, { type: 'playlist', day }).vocabulary.playlist.map(card => card.key);
   const heard = (day, keys) => exchange(0, [], index, { type: 'heard', day, keys });
@@ -192,22 +192,20 @@ test('the listening set holds checked expressions, keeps unheard ones and grows 
   exchange(0, [], index, { type: 'check', checks: words.map(([key, , value]) => ({ key, translation: value.translation })) });
   exchange(0, [], index, { type: 'preference', key: words[0][0], preference: 'exclude' });
   const first = playlist('2026-11-02');
-  assert.deepEqual(first, words.slice(1, 21).map(([key]) => key));
+  assert.deepEqual(first, words.slice(1, 61).map(([key]) => key));
   assert.deepEqual(playlist('2026-11-02'), first);
   // Nothing was heard, so the next day starts with the same expressions.
-  assert.deepEqual(playlist('2026-11-03').slice(0, 20), first);
+  assert.deepEqual(playlist('2026-11-03'), first);
   heard('2026-11-03', first);
   heard('2026-11-03', first);
-  const second = playlist('2026-11-04');
-  assert.equal(second.length, 30);
-  assert.deepEqual(second.slice(0, 20).sort(), [...first].sort());
   for (const day of ['04', '05', '06', '07', '08']) heard('2026-11-' + day, first);
-  assert.equal(playlist('2026-11-09').filter(key => first.includes(key)).length, 20);
+  assert.deepEqual(playlist('2026-11-09').sort(), [...first].sort());
   heard('2026-11-09', first);
-  // After seven days the first expressions are drawn by chance, and the set never exceeds forty.
+  // After seven days they are drawn by chance, and new expressions take the free places.
   const later = Array.from({ length: 8 }, (_, i) => playlist('2026-12-0' + (i + 1)));
-  assert.ok(later.every(set => set.length <= 40));
+  assert.ok(later.every(set => set.length <= 60 && set.length > 30));
   assert.ok(later.some(set => first.some(key => !set.includes(key))));
+  assert.ok(later.every(set => set.some(key => !first.includes(key))));
 });
 
 test('a forgotten expression is heard every day again, and a corrected one keeps its listening days', () => {

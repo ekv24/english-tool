@@ -18,10 +18,8 @@ const sessionSize = 20;
 const sessionNew = 10;
 const day = 86_400_000;
 const intervals = [1, 3, 7, 14, 30, 60, 120];
-// The day's listening set: how many expressions it holds, and how many of them may be new.
-const playlistSize = 40;
-const playlistStart = 20;
-const playlistNew = 10;
+// The day's listening set. Sixty expressions take about eight minutes, so half an hour plays each four times.
+const playlistSize = 60;
 const generalPhrases = new Set([
   'account for', 'as a result', 'as long as', 'at odds with', 'boil down to', 'break down',
   'bring about', 'carry out', 'come up with', 'cope with', 'cut down on', 'deal with',
@@ -317,9 +315,7 @@ export function createVocabularyReview(db) {
         const waiting = new Set(ids);
         const unheard = candidates.filter(item => !item.days && item.chance === 1)
           .sort((a, b) => Number(waiting.has(b.id)) - Number(waiting.has(a.id)) || comparePriority(a.row, b.row));
-        const carried = unheard.filter(item => waiting.has(item.id)).length;
-        const room = Math.min(playlistSize - set.length, Math.max(playlistNew, playlistStart - set.length, carried));
-        ids = [...set, ...unheard.slice(0, room)].map(item => item.id);
+        ids = [...set, ...unheard.slice(0, playlistSize - set.length)].map(item => item.id);
         if (latest) deletePlaylists.run(day);
         savePlaylist.run(day, JSON.stringify(ids));
       }
