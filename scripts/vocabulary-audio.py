@@ -41,9 +41,9 @@ LISTENER_MODEL = 'mlx-community/whisper-large-v3-turbo-asr-fp16'
 VOICE_TEXT = 'Доброе утро! Давай повторим твои слова. Сначала послушай, попробуй вспомнить перевод, а потом я скажу ответ.'
 VOICE_DESIGN = ('Тёплый, мягкий голос молодой женщины около тридцати лет, носительница русского языка, московское произношение '
                 'без акцента, спокойный темп, бархатный тембр, очень чёткая дикция, студийный микрофон.')
-ENGLISH_SPEED = 0.85
+ENGLISH_SPEED = 0.9
 # The word, a pause to recall it, the translation, then both once more and a pause before the next card. Seconds.
-RECALL, BEFORE_REPEAT, BEFORE_LAST, BETWEEN_CARDS = 4.0, 1.5, 1.5, 3.0
+RECALL, BEFORE_REPEAT, BEFORE_LAST, BETWEEN_CARDS = 4.0, 3.0, 1.5, 3.0
 TARGET_SECONDS = 30 * 60
 ATTEMPTS = 6
 # Russian infinitives and reflexive verbs; a few nouns match too, which rarely changes the sound.
